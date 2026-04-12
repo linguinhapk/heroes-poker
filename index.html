@@ -145,7 +145,7 @@ td{padding:13px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:
     <div style="font-size:10px;color:#2563eb;text-transform:uppercase;letter-spacing:2px">FIREBASE URL</div>
     <input type="text" id="fb-url" placeholder="https://heroes-poker-default-rtdb.firebaseio.com" oninput="saveCfg()">
   </div>
-  <div id="sync-status-box" style="margin-bottom:10px"></div>
+  <div id="sync-status-box" style="margin-bottom:10px"><span id="sdot" class="dot"></span> <span id="smsg" style="font-size:12px;color:#3a5a8a"></span></div>
   <div style="display:flex;gap:8px">
     <button class="btn btn-primary" onclick="testConn()">🔌 Testar Conexão</button>
     <button class="btn btn-ghost" onclick="$('setup-box').style.display='none';$('setup-mini').style.display='flex'">Ocultar</button>
