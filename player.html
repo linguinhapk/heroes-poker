@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Heroes Poker — Player</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:"Inter",sans-serif;background:#071220;color:#e8f0fe;min-height:100vh;max-width:480px;margin:0 auto}
+
+/* ── AUTH ── */
+.auth-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.auth-logo{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:36px}
+.auth-logo img{width:64px;height:64px;object-fit:contain}
+.auth-logo h1{font-family:"Bebas Neue",sans-serif;font-size:28px;letter-spacing:3px;color:#fff}
+.auth-logo p{font-size:11px;color:#4a90d9;letter-spacing:3px;text-transform:uppercase}
+.auth-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:16px;padding:24px;width:100%;max-width:360px}
+.auth-tabs{display:flex;border-bottom:1px solid #1e3a6e;margin-bottom:20px}
+.auth-tab{flex:1;background:none;border:none;color:#3a5a8a;padding:10px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:Inter,sans-serif;transition:all .2s}
+.auth-tab.active{color:#60a5fa;border-bottom-color:#3b82f6}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:10px;color:#4a90d9;margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.fg input{width:100%;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:10px 12px;border-radius:8px;font-size:14px;outline:none;font-family:Inter,sans-serif}
+.fg input:focus{border-color:#3b82f6}
+.btn-auth{width:100%;background:#1d4ed8;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;transition:all .2s;margin-top:4px}
+.btn-auth:hover{background:#2563eb}
+.auth-msg{font-size:12px;text-align:center;margin-top:12px;padding:8px 12px;border-radius:8px;display:none}
+.auth-msg.err{background:#1c0000;border:1px solid #450a0a;color:#f87171;display:block}
+.auth-msg.ok{background:#001c0e;border:1px solid #064e3b;color:#34d399;display:block}
+.auth-msg.load{background:#1c1000;border:1px solid #78350f;color:#fbbf24;display:block}
+
+/* ── SETUP ── */
+.setup-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.setup-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:16px;padding:24px;width:100%;max-width:360px}
+.setup-card h2{font-family:"Bebas Neue",sans-serif;font-size:20px;letter-spacing:1px;color:#60a5fa;margin-bottom:4px}
+.setup-card p{font-size:12px;color:#3a5a8a;margin-bottom:16px}
+
+/* ── APP ── */
+.app-screen{display:none;flex-direction:column;min-height:100vh}
+.app-header{background:#0a1628;border-bottom:1px solid #1e3a6e;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.app-header-left{display:flex;align-items:center;gap:10px}
+.header-avatar{width:36px;height:36px;border-radius:50%;background:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;font-family:"Bebas Neue",sans-serif;flex-shrink:0;overflow:hidden}
+.header-avatar img{width:100%;height:100%;object-fit:cover}
+.header-name{font-size:14px;font-weight:600;color:#fff}
+.header-grupo{font-size:11px;color:#4a90d9}
+.header-logo{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:2px;color:#3a5a8a}
+.app-content{flex:1;overflow-y:auto;padding:16px;padding-bottom:80px}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#0a1628;border-top:1px solid #1e3a6e;display:flex;z-index:50}
+.nav-btn{flex:1;background:none;border:none;color:#3a5a8a;padding:12px 4px 10px;font-size:10px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:Inter,sans-serif;transition:all .2s}
+.nav-btn .nav-icon{font-size:20px;line-height:1}
+.nav-btn.active{color:#60a5fa}
+.nav-btn.active .nav-icon{filter:drop-shadow(0 0 6px #3b82f6)}
+
+/* ── CARDS ── */
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:12px;padding:14px}
+.stat-card.full{grid-column:1/-1}
+.stat-label{font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.stat-value{font-size:22px;font-family:"Bebas Neue",sans-serif;letter-spacing:1px;color:#fff}
+.stat-value.pos{color:#34d399}.stat-value.neg{color:#f87171}
+
+.section-title{font-size:10px;color:#3a5a8a;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #112040}
+
+/* ── SCORE BADGE ── */
+.score-card{border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.score-num{font-size:44px;font-family:"Bebas Neue",sans-serif;line-height:1}
+.score-label-big{font-size:16px;font-family:"Bebas Neue",sans-serif;letter-spacing:2px;padding:3px 10px;border-radius:6px;color:#fff;margin-bottom:4px;display:inline-block}
+.score-desc{font-size:11px;color:#94a3b8;max-width:200px;line-height:1.5}
+
+/* ── STATS TABLE ── */
+.kpi-table{background:#0d1e38;border:1px solid #1e3a6e;border-radius:12px;overflow:hidden;margin-bottom:16px}
+.kpi-row{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #112040;font-size:13px}
+.kpi-row:last-child{border-bottom:none}
+.kpi-name{color:#94a3b8;font-size:12px;flex:1}
+.kpi-alvo{font-size:10px;color:#4a90d9;margin-right:12px;white-space:nowrap}
+.kpi-val{font-weight:600;font-size:13px;white-space:nowrap}
+
+/* ── MENTORIA CARDS ── */
+.ment-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:12px;padding:14px;margin-bottom:10px}
+.ment-date{font-family:"Bebas Neue",sans-serif;font-size:16px;color:#a78bfa;letter-spacing:1px}
+.ment-mentor{font-size:11px;color:#3a5a8a;margin-top:2px}
+.ment-mentor span{color:#60a5fa}
+.ment-feedback{font-size:13px;color:#cbd5e1;line-height:1.6;margin-top:10px;padding-top:10px;border-top:1px solid #112040}
+.ment-empty{text-align:center;padding:40px 20px;color:#3a5a8a;font-size:13px}
+
+/* ── MISSÕES ── */
+.mission-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:12px;padding:16px;margin-bottom:12px}
+.mission-title{font-size:14px;font-weight:600;color:#fff;margin-bottom:4px}
+.mission-sub{font-size:11px;color:#3a5a8a;margin-bottom:14px}
+.q-item{margin-bottom:14px}
+.q-label{font-size:12px;color:#93c5fd;font-weight:500;margin-bottom:8px;display:block}
+.q-textarea{width:100%;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:10px 12px;border-radius:8px;font-size:13px;outline:none;font-family:Inter,sans-serif;resize:vertical;min-height:80px}
+.q-textarea:focus{border-color:#3b82f6}
+.upload-zone{border:2px dashed #1e3a6e;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s}
+.upload-zone:hover,.upload-zone.has{border-color:#3b82f6;background:#071e3a}
+.upload-zone p{font-size:12px;color:#4a90d9;margin-top:6px}
+.upload-thumb{width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin-top:10px;display:none}
+.btn-send{width:100%;background:#1d4ed8;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px}
+.btn-send:hover{background:#2563eb}
+.btn-send:disabled{opacity:.5;cursor:not-allowed}
+.send-msg{font-size:12px;text-align:center;margin-top:10px;padding:8px;border-radius:8px;display:none}
+.send-msg.ok{background:#001c0e;border:1px solid #064e3b;color:#34d399;display:block}
+.send-msg.err{background:#1c0000;border:1px solid #450a0a;color:#f87171;display:block}
+.send-msg.load{background:#1c1000;border:1px solid #78350f;color:#fbbf24;display:block}
+
+/* ── ENVIOS HISTORY ── */
+.envio-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:10px;padding:12px;margin-bottom:8px}
+.envio-date{font-size:10px;color:#3a5a8a;margin-bottom:6px}
+.envio-type{font-size:11px;color:#fbbf24;background:#451a03;padding:2px 8px;border-radius:10px;display:inline-block;margin-bottom:8px}
+
+/* ── LOADING ── */
+.loading{display:flex;align-items:center;justify-content:center;padding:60px 20px;color:#3a5a8a;font-size:13px;flex-direction:column;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid #1e3a6e;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.logout-btn{background:none;border:none;color:#3a5a8a;font-size:12px;cursor:pointer;font-family:Inter,sans-serif;padding:4px}
+.logout-btn:hover{color:#f87171}
+
+.empty{text-align:center;padding:40px 20px;color:#3a5a8a;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN (first time) ── -->
+<div id="setup-screen" class="setup-screen" style="display:none">
+  <div class="setup-card">
+    <h2>⚙️ Configurar</h2>
+    <p>Cole a URL do Firebase e a Web API Key do projeto para continuar.</p>
+    <div class="fg">
+      <label>Firebase Database URL</label>
+      <input type="text" id="cfg-url" placeholder="https://heroes-poker-default-rtdb.firebaseio.com">
+    </div>
+    <div class="fg">
+      <label>Firebase Web API Key</label>
+      <input type="text" id="cfg-apikey" placeholder="AIzaSy...">
+    </div>
+    <div style="font-size:11px;color:#3a5a8a;margin-bottom:14px;line-height:1.6">
+      A API Key está em: Firebase Console → Configurações do projeto → Geral → Apps da Web
+    </div>
+    <button class="btn-auth" onclick="saveSetup()">Salvar e Continuar</button>
+    <div id="setup-msg" class="auth-msg"></div>
+  </div>
+</div>
+
+<!-- ── AUTH SCREEN ── -->
+<div id="auth-screen" class="auth-screen" style="display:none">
+  <div class="auth-logo">
+    <img id="auth-logo-img" src="" alt="Heroes" onerror="this.style.display='none'">
+    <h1>Heroes Poker</h1>
+    <p>Player Portal</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Entrar</button>
+      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Criar Conta</button>
+    </div>
+    <!-- Login -->
+    <div id="form-login">
+      <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="seu@email.com"></div>
+      <div class="fg"><label>Senha</label><input type="password" id="l-senha" placeholder="••••••••"></div>
+      <button class="btn-auth" onclick="doLogin()">Entrar</button>
+    </div>
+    <!-- Register -->
+    <div id="form-register" style="display:none">
+      <div class="fg"><label>Nome completo</label><input type="text" id="r-nome" placeholder="Seu nome completo"></div>
+      <div class="fg"><label>Email</label><input type="email" id="r-email" placeholder="seu@email.com"></div>
+      <div class="fg"><label>Senha</label><input type="password" id="r-senha" placeholder="mínimo 6 caracteres"></div>
+      <div class="fg"><label>Confirmar Senha</label><input type="password" id="r-senha2" placeholder="repita a senha"></div>
+      <button class="btn-auth" onclick="doRegister()">Criar Conta</button>
+    </div>
+    <div id="auth-msg" class="auth-msg"></div>
+  </div>
+</div>
+
+<!-- ── APP SCREEN ── -->
+<div id="app-screen" class="app-screen">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="app-header-left">
+      <div class="header-avatar" id="hdr-avatar">?</div>
+      <div>
+        <div class="header-name" id="hdr-name">—</div>
+        <div class="header-grupo" id="hdr-grupo">—</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="header-logo">HPT</span>
+      <button class="logout-btn" onclick="doLogout()" title="Sair">⏻</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="app-content" id="app-content">
+    <div class="loading"><div class="spinner"></div>Carregando...</div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-inicio" onclick="setTab('inicio')">
+      <span class="nav-icon">🏠</span>Início
+    </button>
+    <button class="nav-btn" id="nav-stats" onclick="setTab('stats')">
+      <span class="nav-icon">📊</span>Stats
+    </button>
+    <button class="nav-btn" id="nav-mentorias" onclick="setTab('mentorias')">
+      <span class="nav-icon">💬</span>Mentorias
+    </button>
+    <button class="nav-btn" id="nav-missoes" onclick="setTab('missoes')">
+      <span class="nav-icon">📋</span>Missões
+    </button>
+  </nav>
+</div>
+
+<script>
+// ── CONFIG ──
+var FB_URL = '';
+var FB_APIKEY = '';
+var currentUser = null;
+var playerData = null;
+var activeTab = 'inicio';
+
+var LOGO_B64 = ''; // will be set from index.html if needed
+
+var MINDSET_QUESTIONS = [
+  'Como você avalia sua disciplina na semana? Descreva situações onde manteve ou perdeu o foco.',
+  'Você respeitou os stop loss e limites de sessão definidos?',
+  'Como está seu equilíbrio emocional durante as sessões? Houve tilt?',
+  'Qual foi o maior erro de execução da semana e o que aprendeu com ele?',
+  'Quais são seus objetivos para a próxima semana?'
+];
+
+function $(id){ return document.getElementById(id); }
+
+// ── SETUP ──
+function loadConfig(){
+  var c = JSON.parse(localStorage.getItem('hpt_player_cfg') || '{}');
+  FB_URL = c.url || '';
+  FB_APIKEY = c.apikey || '';
+  return !!(FB_URL && FB_APIKEY);
+}
+function saveSetup(){
+  var url = $('cfg-url').value.trim().replace(/\/+$/,'');
+  var key = $('cfg-apikey').value.trim();
+  if(!url || !key){ showMsg('setup-msg','Preencha todos os campos.','err'); return; }
+  localStorage.setItem('hpt_player_cfg', JSON.stringify({url:url, apikey:key}));
+  FB_URL = url; FB_APIKEY = key;
+  $('setup-screen').style.display = 'none';
+  $('auth-screen').style.display = 'flex';
+}
+
+// ── AUTH ──
+function switchTab(t){
+  $('tab-login').classList.toggle('active', t==='login');
+  $('tab-register').classList.toggle('active', t==='register');
+  $('form-login').style.display = t==='login' ? '' : 'none';
+  $('form-register').style.display = t==='register' ? '' : 'none';
+  $('auth-msg').style.display = 'none';
+}
+
+function showMsg(id, msg, type){
+  var el = $(id); if(!el) return;
+  el.textContent = msg;
+  el.className = 'auth-msg ' + type;
+}
+
+async function doLogin(){
+  var email = $('l-email').value.trim();
+  var senha = $('l-senha').value;
+  if(!email || !senha){ showMsg('auth-msg','Preencha email e senha.','err'); return; }
+  showMsg('auth-msg','Entrando...','load');
+  try{
+    var r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+FB_APIKEY, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password:senha, returnSecureToken:true})
+    });
+    var d = await r.json();
+    if(d.error) throw new Error(translateAuthError(d.error.message));
+    currentUser = {uid: d.localId, email: d.email, token: d.idToken};
+    localStorage.setItem('hpt_player_session', JSON.stringify({uid:d.localId, email:d.email, token:d.idToken}));
+    await loadPlayerData();
+  } catch(e){ showMsg('auth-msg', e.message, 'err'); }
+}
+
+async function doRegister(){
+  var nome  = $('r-nome').value.trim();
+  var email = $('r-email').value.trim();
+  var senha = $('r-senha').value;
+  var senha2= $('r-senha2').value;
+  if(!nome || !email || !senha){ showMsg('auth-msg','Preencha todos os campos.','err'); return; }
+  if(senha !== senha2){ showMsg('auth-msg','Senhas não conferem.','err'); return; }
+  if(senha.length < 6){ showMsg('auth-msg','Senha mínima: 6 caracteres.','err'); return; }
+  showMsg('auth-msg','Criando conta...','load');
+  try{
+    var r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+FB_APIKEY, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password:senha, returnSecureToken:true})
+    });
+    var d = await r.json();
+    if(d.error) throw new Error(translateAuthError(d.error.message));
+    currentUser = {uid: d.localId, email: d.email, token: d.idToken};
+    // Save account link
+    await fetch(FB_URL+'/hpt_accounts/'+d.localId+'.json', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, nome, createdAt: new Date().toISOString()})
+    });
+    localStorage.setItem('hpt_player_session', JSON.stringify({uid:d.localId, email:d.email, token:d.idToken}));
+    await loadPlayerData();
+  } catch(e){ showMsg('auth-msg', e.message, 'err'); }
+}
+
+function doLogout(){
+  localStorage.removeItem('hpt_player_session');
+  currentUser = null; playerData = null;
+  $('app-screen').style.display = 'none';
+  $('auth-screen').style.display = 'flex';
+}
+
+function translateAuthError(msg){
+  if(msg.includes('EMAIL_EXISTS')) return 'Este email já está cadastrado.';
+  if(msg.includes('INVALID_LOGIN_CREDENTIALS') || msg.includes('INVALID_PASSWORD')) return 'Email ou senha incorretos.';
+  if(msg.includes('EMAIL_NOT_FOUND')) return 'Email não encontrado.';
+  if(msg.includes('WEAK_PASSWORD')) return 'Senha fraca. Use pelo menos 6 caracteres.';
+  if(msg.includes('TOO_MANY_ATTEMPTS')) return 'Muitas tentativas. Tente mais tarde.';
+  return msg;
+}
+
+// ── LOAD PLAYER DATA ──
+async function loadPlayerData(){
+  try{
+    $('auth-screen').style.display = 'none';
+    $('app-screen').style.display = 'flex';
+    $('app-content').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando dados...</div>';
+
+    var r = await fetch(FB_URL+'/hpt_players.json');
+    if(!r.ok) throw new Error('Erro ao buscar dados.');
+    var raw = await r.json();
+    var all = raw ? Object.values(raw) : [];
+
+    // Find player by email or name
+    var acctR = await fetch(FB_URL+'/hpt_accounts/'+currentUser.uid+'.json');
+    var acct = acctR.ok ? await acctR.json() : null;
+    var searchName = (acct && acct.nome) ? acct.nome.toLowerCase() : '';
+    var searchEmail = (currentUser.email || '').toLowerCase();
+
+    playerData = all.find(function(p){
+      if(p.email && p.email.toLowerCase() === searchEmail) return true;
+      if(searchName && p.nome && p.nome.toLowerCase() === searchName) return true;
+      return false;
+    });
+
+    if(!playerData){
+      $('app-content').innerHTML = '<div class="empty">⚠️ Perfil não encontrado.<br><span style="font-size:11px;color:#3a5a8a;margin-top:6px;display:block">Peça ao administrador para vincular seu email <b style="color:#60a5fa">'+currentUser.email+'</b> ao seu cadastro.</span></div>';
+      $('hdr-name').textContent = acct ? acct.nome : currentUser.email;
+      $('hdr-grupo').textContent = '';
+      return;
+    }
+
+    // Normalize arrays
+    if(playerData.records && !Array.isArray(playerData.records)) playerData.records = Object.values(playerData.records);
+    if(playerData.estrategias && !Array.isArray(playerData.estrategias)) playerData.estrategias = Object.values(playerData.estrategias);
+    if(playerData.mentorias && !Array.isArray(playerData.mentorias)) playerData.mentorias = Object.values(playerData.mentorias);
+
+    // Update header
+    var a = aggPlayer(playerData);
+    $('hdr-name').textContent = playerData.nome || '—';
+    $('hdr-grupo').textContent = a.grupo || playerData.grupo || '—';
+    var av = $('hdr-avatar');
+    if(playerData.foto){
+      av.innerHTML = '<img src="'+playerData.foto+'" onerror="this.style.display=\'none\'">';
+    } else {
+      av.textContent = ini(playerData.nome);
+    }
+
+    renderTab('inicio');
+  } catch(e){
+    $('app-content').innerHTML = '<div class="empty">❌ '+e.message+'</div>';
+  }
+}
+
+// ── TABS ──
+function setTab(t){
+  activeTab = t;
+  ['inicio','stats','mentorias','missoes'].forEach(function(tab){
+    var b = $('nav-'+tab); if(b) b.classList.toggle('active', tab===t);
+  });
+  renderTab(t);
+}
+function renderTab(t){
+  if(t==='inicio') renderInicio();
+  else if(t==='stats') renderStats();
+  else if(t==='mentorias') renderMentorias();
+  else if(t==='missoes') renderMissoes();
+}
+
+// ── UTILS ──
+function ini(n){ if(!n) return '?'; return n.split(' ').filter(Boolean).slice(0,2).map(function(w){return w[0]?w[0].toUpperCase():'';}).join(''); }
+function fmtUSD(v){ if(v==null) return '—'; var s=Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); return (v>=0?'+ US$ ':'- US$ ')+s; }
+function fmtInt(v){ return (v||0).toLocaleString('pt-BR'); }
+function aggPlayer(p){
+  var recs = p.records||[];
+  if(!recs.length) return {torneios:0,avb:0,profit_usd:0,swing:0,grupo:p.grupo||''};
+  var torneios = recs.reduce(function(s,r){return s+(r.torneios||0);},0);
+  var profit_usd = recs.reduce(function(s,r){return s+(r.profit_usd||0);},0);
+  var sw = recs.reduce(function(s,r){return s+(r.swing||0);},0);
+  var tw = recs.reduce(function(s,r){return s+((r.avb||0)*(r.torneios||0));},0);
+  var avb = torneios>0?tw/torneios:0;
+  var grupo = recs.slice(-1)[0]&&recs.slice(-1)[0].grupo || p.grupo||'';
+  return {torneios,avb,profit_usd,swing:sw,grupo};
+}
+
+var KPI_CONFIG = {
+  'VPIP':{min:28,max:30,peso:5,tol:1},'PFR':{min:19,max:22,peso:5,tol:1},'3BET TOTAL':{min:9,max:11,peso:5,tol:1},
+  'FOLD VS 3BET':{min:47,max:52,peso:5,tol:2},'3BET BB VS STEAL':{min:11,max:13,peso:5,tol:2},
+  'RFI EP':{min:19,max:21,peso:5,tol:1},'RFI MP':{min:25,max:27,peso:5,tol:2},'RFI HJ':{min:29,max:31,peso:5,tol:2},
+  'RFI CO':{min:39,max:41,peso:5,tol:3},'RFI BTN':{min:55,max:61,peso:5,tol:3},'RFI SB':{min:30,max:40,peso:4,tol:5},
+  'CALL BB':{min:55,max:60,peso:5,tol:2},'3BET BB':{min:8,max:12,peso:5,tol:1},
+  'CBET TURN':{min:55,max:62,peso:5,tol:3},'BET RIVER':{min:47,max:50,peso:5,tol:3},
+  'PROBE RIVER':{min:55,max:65,peso:5,tol:3},'W$WSF':{min:48,max:50,peso:5,tol:1},'WWSF':{min:48,max:50,peso:5,tol:1}
+};
+
+function kpiColor(v, k){
+  var cfg = KPI_CONFIG[k] || KPI_CONFIG[(k||'').toUpperCase()];
+  if(!cfg) return '#e8f0fe';
+  var n = parseFloat(v); if(isNaN(n)) return '#e8f0fe';
+  if(n>=cfg.min && n<=cfg.max) return '#34d399';
+  var dev = n<cfg.min?(cfg.min-n):(n-cfg.max);
+  return dev<=cfg.tol ? '#fbbf24' : '#f87171';
+}
+
+function calcScore(estrategias){
+  if(!estrategias||!estrategias.length) return null;
+  var e = estrategias.slice(-1)[0]; var stats = e.stats||{};
+  var tp=0, mp=0;
+  for(var k in stats){
+    var s=stats[k]; var v=typeof s==='object'?s.valor:s;
+    if(v==null||v==='') continue;
+    var cfg=KPI_CONFIG[k]||KPI_CONFIG[(k||'').toUpperCase()];
+    var peso=cfg?cfg.peso:1;
+    var nota; if(cfg){ var vf=parseFloat(v); if(isNaN(vf)){continue;} if(vf>=cfg.min&&vf<=cfg.max){nota=100;} else { var dev=vf<cfg.min?(cfg.min-vf):(vf-cfg.max); var alem=Math.max(0,dev-cfg.tol); nota=alem===0?Math.max(80,Math.round((100-(dev/cfg.tol)*cfg.peso*2)*10)/10):Math.max(0,Math.round((100-alem*10*cfg.peso)*10)/10); } } else { nota=80; }
+    tp+=nota*peso; mp+=100*peso;
+  }
+  return mp>0 ? Math.round((tp/mp)*100) : null;
+}
+function scoreColor(s){ if(s>=85)return'#16a34a'; if(s>=70)return'#2563eb'; if(s>=55)return'#ea580c'; return'#dc2626'; }
+function scoreLabel(s){ if(s>=85)return'Elite'; if(s>=70)return'Competente'; if(s>=55)return'Em Desenvolvimento'; return'Crítico'; }
+function scoreDesc(s){ if(s>=85)return'Execução técnica consistente. Elegível para subir de stake.'; if(s>=70)return'Sólido. Leaks pontuais. Manter o nível antes de subir.'; if(s>=55)return'Leaks identificáveis. Plano de estudo necessário.'; return'Problemas estruturais. Revisão de fundamentos obrigatória.'; }
+function desanitizeKey(k){ return k.replace(/__S__/g,'/').replace(/__D__/g,'$').replace(/__P__/g,'.').replace(/__H__/g,'#').replace(/__LB__/g,'[').replace(/__RB__/g,']').replace(/__Q__/g,'?'); }
+function desanitizeStats(stats){ if(!stats) return {}; var out={}; Object.keys(stats).forEach(function(k){ out[desanitizeKey(k)]=stats[k]; }); return out; }
+
+// ── RENDER INICIO ──
+function renderInicio(){
+  if(!playerData){ $('app-content').innerHTML='<div class="loading"><div class="spinner"></div></div>'; return; }
+  var a = aggPlayer(playerData);
+  var pc = a.profit_usd>=0?'pos':'neg';
+  var sc = (a.swing||0)>=0?'pos':'neg';
+  var score = calcScore(playerData.estrategias||[]);
+  var lastMent = (playerData.mentorias||[]).slice().sort(function(a,b){return(b.data||'')>(a.data||'')?1:-1;})[0];
+
+  var html = '<div class="section-title">📊 Resumo Geral</div>';
+  html += '<div class="stat-row">';
+  html += '<div class="stat-card"><div class="stat-label">Torneios</div><div class="stat-value">'+fmtInt(a.torneios)+'</div></div>';
+  html += '<div class="stat-card"><div class="stat-label">AVB Médio</div><div class="stat-value">US$ '+(a.avb?a.avb.toFixed(1):'—')+'</div></div>';
+  html += '<div class="stat-card full"><div class="stat-label">Profit Total</div><div class="stat-value '+pc+'">'+fmtUSD(a.profit_usd)+'</div></div>';
+  html += '<div class="stat-card full"><div class="stat-label">Swing Total</div><div class="stat-value '+sc+'">'+(a.swing>=0?'+':'')+a.swing.toFixed(1)+' bi</div></div>';
+  html += '</div>';
+
+  if(score !== null){
+    var col = scoreColor(score);
+    html += '<div class="score-card" style="background:'+col+'11;border:1px solid '+col+'44">';
+    html += '<div><span class="score-label-big" style="background:'+col+'">'+scoreLabel(score).toUpperCase()+'</span><div class="score-desc">'+scoreDesc(score)+'</div></div>';
+    html += '<div class="score-num" style="color:'+col+'">'+score+'%</div></div>';
+  }
+
+  if(lastMent){
+    html += '<div class="section-title">💬 Última Mentoria</div>';
+    html += '<div class="ment-card">';
+    html += '<div class="ment-date">'+(lastMent.data?lastMent.data.slice(8,10)+'/'+lastMent.data.slice(5,7)+'/'+lastMent.data.slice(0,4):'—')+'</div>';
+    html += '<div class="ment-mentor">Mentor: <span>'+(lastMent.mentor||'—')+'</span></div>';
+    if(lastMent.descricao) html += '<div class="ment-feedback">'+lastMent.descricao+'</div>';
+    html += '</div>';
+  }
+
+  var reta = playerData.reta || '—';
+  html += '<div class="section-title">🎯 Minha Reta</div>';
+  html += '<div class="stat-card"><div class="stat-label">Reta atual</div><div class="stat-value" style="color:#a78bfa;font-size:18px">'+reta+'</div></div>';
+
+  $('app-content').innerHTML = html;
+}
+
+// ── RENDER STATS ──
+function renderStats(){
+  if(!playerData){ $('app-content').innerHTML='<div class="empty">Sem dados.</div>'; return; }
+  var estrategias = playerData.estrategias||[];
+  if(!estrategias.length){ $('app-content').innerHTML='<div class="empty">📊<br>Nenhuma stat importada ainda.</div>'; return; }
+
+  var latest = estrategias.slice(-1)[0];
+  var stats = desanitizeStats(latest.stats||{});
+  var score = calcScore(estrategias);
+  var mes = latest.data ? (latest.data.slice(5,7)+'/'+latest.data.slice(0,4)) : '—';
+
+  var html = '';
+  if(score !== null){
+    var col = scoreColor(score);
+    html += '<div class="score-card" style="background:'+col+'11;border:1px solid '+col+'44;margin-bottom:16px">';
+    html += '<div><span class="score-label-big" style="background:'+col+'">'+scoreLabel(score).toUpperCase()+'</span><div class="score-desc" style="color:#94a3b8;font-size:11px">Referência: '+mes+'</div></div>';
+    html += '<div class="score-num" style="color:'+col+'">'+score+'%</div></div>';
+  }
+
+  var keys = Object.keys(stats);
+  html += '<div class="section-title">📈 Estatísticas — '+mes+'</div>';
+  html += '<div class="kpi-table">';
+  keys.forEach(function(k){
+    var s = stats[k];
+    var v = typeof s==='object'?s.valor:s;
+    var alvo = typeof s==='object'?s.alvo:null;
+    var cfg = KPI_CONFIG[k]||KPI_CONFIG[(k||'').toUpperCase()];
+    var alvoDisp = cfg ? cfg.min+' – '+cfg.max : (alvo||'—');
+    var col = kpiColor(v, k);
+    html += '<div class="kpi-row">';
+    html += '<span class="kpi-name">'+k+'</span>';
+    html += '<span class="kpi-alvo">'+alvoDisp+'</span>';
+    html += '<span class="kpi-val" style="color:'+col+'">'+v+'</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  if(estrategias.length > 1){
+    html += '<div style="font-size:11px;color:#3a5a8a;text-align:center;margin-top:8px">Mostrando o mês mais recente</div>';
+  }
+
+  $('app-content').innerHTML = html;
+}
+
+// ── RENDER MENTORIAS ──
+function renderMentorias(){
+  if(!playerData){ $('app-content').innerHTML='<div class="empty">Sem dados.</div>'; return; }
+  var lista = (playerData.mentorias||[]).slice().sort(function(a,b){return(b.data||'')>(a.data||'')?1:-1;});
+
+  var html = '<div class="section-title">💬 Feedbacks das Mentorias</div>';
+  if(!lista.length){
+    html += '<div class="ment-empty">Nenhuma mentoria registrada ainda.</div>';
+    $('app-content').innerHTML = html; return;
+  }
+
+  lista.forEach(function(m){
+    var dataFmt = m.data ? m.data.slice(8,10)+'/'+m.data.slice(5,7)+'/'+m.data.slice(0,4) : '—';
+    html += '<div class="ment-card">';
+    html += '<div class="ment-date">'+dataFmt+'</div>';
+    html += '<div class="ment-mentor">Mentor: <span>'+(m.mentor||'—')+'</span>';
+    if(m.tipo) html += ' · <span style="color:#fbbf24">'+m.tipo.toUpperCase()+'</span>';
+    html += '</div>';
+    if(m.descricao){
+      html += '<div class="ment-feedback">'+m.descricao+'</div>';
+    } else {
+      html += '<div style="font-size:12px;color:#3a5a8a;margin-top:8px;font-style:italic">Sem feedback registrado.</div>';
+    }
+    html += '</div>';
+  });
+
+  $('app-content').innerHTML = html;
+}
+
+// ── RENDER MISSOES ──
+function renderMissoes(){
+  var html = '';
+
+  // Questionário de Mindset
+  html += '<div class="section-title">🧠 Questionário de Mindset</div>';
+  html += '<div class="mission-card">';
+  html += '<div class="mission-title">Check-in Semanal</div>';
+  html += '<div class="mission-sub">Responda com honestidade. Suas respostas são enviadas ao seu mentor.</div>';
+  MINDSET_QUESTIONS.forEach(function(q, i){
+    html += '<div class="q-item">';
+    html += '<label class="q-label">'+(i+1)+'. '+q+'</label>';
+    html += '<textarea class="q-textarea" id="q'+i+'" placeholder="Sua resposta..."></textarea>';
+    html += '</div>';
+  });
+  html += '<button class="btn-send" onclick="sendQuestionario()">📤 Enviar Questionário</button>';
+  html += '<div id="msg-quest" class="send-msg"></div>';
+  html += '</div>';
+
+  // Upload de Print
+  html += '<div class="section-title" style="margin-top:24px">📸 Enviar Print / Prova</div>';
+  html += '<div class="mission-card">';
+  html += '<div class="mission-title">Comprovante de Missão</div>';
+  html += '<div class="mission-sub">Envie um print como prova de que completou a tarefa solicitada.</div>';
+  html += '<div class="q-item"><label class="q-label">Descrição</label><textarea class="q-textarea" id="print-desc" placeholder="O que você está enviando?" rows="2"></textarea></div>';
+  html += '<div class="upload-zone" id="upload-zone" onclick="$(\'print-file\').click()">';
+  html += '<div style="font-size:28px">📎</div>';
+  html += '<p>Toque para selecionar imagem</p>';
+  html += '<input type="file" id="print-file" accept="image/*" onchange="handlePrintUpload(this)" style="display:none">';
+  html += '<img id="upload-thumb" class="upload-thumb">';
+  html += '</div>';
+  html += '<button class="btn-send" onclick="sendPrint()">📤 Enviar Print</button>';
+  html += '<div id="msg-print" class="send-msg"></div>';
+  html += '</div>';
+
+  $('app-content').innerHTML = html;
+}
+
+// ── SEND QUESTIONARIO ──
+async function sendQuestionario(){
+  if(!playerData){ return; }
+  var respostas = MINDSET_QUESTIONS.map(function(q,i){
+    return { pergunta: q, resposta: ($('q'+i) ? $('q'+i).value.trim() : '') };
+  });
+  var empty = respostas.filter(function(r){return !r.resposta;});
+  if(empty.length){
+    showSendMsg('msg-quest','Responda todas as perguntas antes de enviar.','err'); return;
+  }
+  showSendMsg('msg-quest','Enviando...','load');
+  try{
+    var submission = {
+      type: 'questionario', playerId: playerData.id, playerNome: playerData.nome,
+      data: new Date().toISOString().slice(0,10), timestamp: Date.now(),
+      respostas: respostas
+    };
+    var key = 'sub_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    await fetch(FB_URL+'/hpt_submissions/'+playerData.id+'/'+key+'.json', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(submission)
+    });
+    showSendMsg('msg-quest','✅ Questionário enviado com sucesso!','ok');
+    MINDSET_QUESTIONS.forEach(function(_,i){ var el=$('q'+i); if(el) el.value=''; });
+  } catch(e){ showSendMsg('msg-quest','Erro ao enviar: '+e.message,'err'); }
+}
+
+// ── HANDLE PRINT UPLOAD ──
+var _printB64 = '';
+function handlePrintUpload(input){
+  var file = input.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      var MAX = 800; var w=img.width, h=img.height;
+      if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      _printB64 = canvas.toDataURL('image/jpeg', 0.75);
+      var thumb = $('upload-thumb');
+      if(thumb){ thumb.src=_printB64; thumb.style.display='block'; }
+      var zone = $('upload-zone');
+      if(zone) zone.classList.add('has');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── SEND PRINT ──
+async function sendPrint(){
+  if(!playerData) return;
+  if(!_printB64){ showSendMsg('msg-print','Selecione uma imagem primeiro.','err'); return; }
+  showSendMsg('msg-print','Enviando...','load');
+  try{
+    var desc = $('print-desc') ? $('print-desc').value.trim() : '';
+    var submission = {
+      type: 'print', playerId: playerData.id, playerNome: playerData.nome,
+      data: new Date().toISOString().slice(0,10), timestamp: Date.now(),
+      descricao: desc, imagem: _printB64
+    };
+    var key = 'sub_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    await fetch(FB_URL+'/hpt_submissions/'+playerData.id+'/'+key+'.json', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(submission)
+    });
+    showSendMsg('msg-print','✅ Print enviado com sucesso!','ok');
+    _printB64 = '';
+    var thumb=$('upload-thumb'); if(thumb){thumb.src='';thumb.style.display='none';}
+    var zone=$('upload-zone'); if(zone)zone.classList.remove('has');
+    var desc=$('print-desc'); if(desc)desc.value='';
+    var fi=$('print-file'); if(fi)fi.value='';
+  } catch(e){ showSendMsg('msg-print','Erro ao enviar: '+e.message,'err'); }
+}
+
+function showSendMsg(id, msg, type){
+  var el=$(id); if(!el) return;
+  el.textContent=msg; el.className='send-msg '+type;
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', function(){
+  var ok = loadConfig();
+  if(!ok){
+    $('setup-screen').style.display='flex'; return;
+  }
+  // Try restore session
+  var sess = JSON.parse(localStorage.getItem('hpt_player_session')||'null');
+  if(sess && sess.uid){
+    currentUser = sess;
+    loadPlayerData();
+  } else {
+    $('auth-screen').style.display='flex';
+  }
+});
+</script>
+</body>
+</html>
