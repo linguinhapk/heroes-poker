@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:"Inter",sans-serif;background:#071220;color:#e8f0fe;min-height:100vh;max-width:480px;margin:0 auto}
+body{font-family:"Inter",sans-serif;background:#071220;color:#e8f0fe;min-height:100vh;max-width:860px;margin:0 auto}
 
 /* ── AUTH ── */
 .auth-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
@@ -45,45 +45,45 @@ body{font-family:"Inter",sans-serif;background:#071220;color:#e8f0fe;min-height:
 .header-name{font-size:14px;font-weight:600;color:#fff}
 .header-grupo{font-size:11px;color:#4a90d9}
 .header-logo{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:2px;color:#3a5a8a}
-.app-content{flex:1;overflow-y:auto;padding:16px;padding-bottom:80px}
+.app-content{flex:1;overflow-y:auto;padding:28px 28px}
 
 /* ── BOTTOM NAV ── */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#0a1628;border-top:1px solid #1e3a6e;display:flex;z-index:50}
-.nav-btn{flex:1;background:none;border:none;color:#3a5a8a;padding:12px 4px 10px;font-size:10px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:Inter,sans-serif;transition:all .2s}
-.nav-btn .nav-icon{font-size:20px;line-height:1}
-.nav-btn.active{color:#60a5fa}
-.nav-btn.active .nav-icon{filter:drop-shadow(0 0 6px #3b82f6)}
+.bottom-nav{background:#071220;border-bottom:2px solid #1e3a6e;display:flex;width:100%;z-index:49}
+.nav-btn{flex:1;background:none;border:none;color:#3a5a8a;padding:14px 8px;font-size:12px;font-weight:500;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;font-family:Inter,sans-serif;transition:all .2s;border-bottom:2px solid transparent;margin-bottom:-2px}
+.nav-btn .nav-icon{font-size:16px;line-height:1}
+.nav-btn.active{color:#60a5fa;border-bottom-color:#3b82f6}
+.nav-btn.active .nav-icon{}
 
 /* ── CARDS ── */
-.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.stat-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:12px;padding:14px}
-.stat-card.full{grid-column:1/-1}
-.stat-label{font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
-.stat-value{font-size:22px;font-family:"Bebas Neue",sans-serif;letter-spacing:1px;color:#fff}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:14px;padding:22px 18px}
+.stat-card.full{grid-column:span 2}
+.stat-label{font-size:11px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.stat-value{font-size:30px;font-family:"Bebas Neue",sans-serif;letter-spacing:1px;color:#fff}
 .stat-value.pos{color:#34d399}.stat-value.neg{color:#f87171}
 
-.section-title{font-size:10px;color:#3a5a8a;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #112040}
+.section-title{font-size:11px;color:#3a5a8a;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin:30px 0 16px;padding-bottom:8px;border-bottom:1px solid #112040}
 
 /* ── SCORE BADGE ── */
-.score-card{border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
-.score-num{font-size:44px;font-family:"Bebas Neue",sans-serif;line-height:1}
-.score-label-big{font-size:16px;font-family:"Bebas Neue",sans-serif;letter-spacing:2px;padding:3px 10px;border-radius:6px;color:#fff;margin-bottom:4px;display:inline-block}
-.score-desc{font-size:11px;color:#94a3b8;max-width:200px;line-height:1.5}
+.score-card{border-radius:14px;padding:22px 20px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between}
+.score-num{font-size:56px;font-family:"Bebas Neue",sans-serif;line-height:1}
+.score-label-big{font-size:18px;font-family:"Bebas Neue",sans-serif;letter-spacing:2px;padding:5px 14px;border-radius:6px;color:#fff;margin-bottom:8px;display:inline-block}
+.score-desc{font-size:12px;color:#94a3b8;max-width:200px;line-height:1.6}
 
 /* ── STATS TABLE ── */
 .kpi-table{background:#0d1e38;border:1px solid #1e3a6e;border-radius:12px;overflow:hidden;margin-bottom:16px}
-.kpi-row{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #112040;font-size:13px}
+.kpi-row{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid #112040;font-size:13px}
 .kpi-row:last-child{border-bottom:none}
 .kpi-name{color:#94a3b8;font-size:12px;flex:1}
 .kpi-alvo{font-size:10px;color:#4a90d9;margin-right:12px;white-space:nowrap}
 .kpi-val{font-weight:600;font-size:13px;white-space:nowrap}
 
 /* ── MENTORIA CARDS ── */
-.ment-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:12px;padding:14px;margin-bottom:10px}
-.ment-date{font-family:"Bebas Neue",sans-serif;font-size:16px;color:#a78bfa;letter-spacing:1px}
-.ment-mentor{font-size:11px;color:#3a5a8a;margin-top:2px}
+.ment-card{background:#0d1e38;border:1px solid #1e3a6e;border-radius:14px;padding:20px;margin-bottom:14px}
+.ment-date{font-family:"Bebas Neue",sans-serif;font-size:20px;color:#a78bfa;letter-spacing:1px}
+.ment-mentor{font-size:12px;color:#3a5a8a;margin-top:6px}
 .ment-mentor span{color:#60a5fa}
-.ment-feedback{font-size:13px;color:#cbd5e1;line-height:1.6;margin-top:10px;padding-top:10px;border-top:1px solid #112040}
+.ment-feedback{font-size:14px;color:#cbd5e1;line-height:1.7;margin-top:14px;padding-top:14px;border-top:1px solid #112040}
 .ment-empty{text-align:center;padding:40px 20px;color:#3a5a8a;font-size:13px}
 
 /* ── MISSÕES ── */
@@ -193,12 +193,7 @@ body{font-family:"Inter",sans-serif;background:#071220;color:#e8f0fe;min-height:
     </div>
   </div>
 
-  <!-- Content -->
-  <div class="app-content" id="app-content">
-    <div class="loading"><div class="spinner"></div>Carregando...</div>
-  </div>
-
-  <!-- Bottom Nav -->
+  <!-- Top Nav -->
   <nav class="bottom-nav">
     <button class="nav-btn active" id="nav-inicio" onclick="setTab('inicio')">
       <span class="nav-icon">🏠</span>Início
@@ -213,12 +208,18 @@ body{font-family:"Inter",sans-serif;background:#071220;color:#e8f0fe;min-height:
       <span class="nav-icon">📋</span>Missões
     </button>
   </nav>
+
+  <!-- Content -->
+  <div class="app-content" id="app-content">
+    <div class="loading"><div class="spinner"></div>Carregando...</div>
+  </div>
+
 </div>
 
 <script>
 // ── CONFIG ──
-var FB_URL = '';
-var FB_APIKEY = '';
+var FB_URL = 'https://heroes-poker-team-default-rtdb.firebaseio.com';
+var FB_APIKEY = 'AIzaSyBbbJA5UknYDZZh_sXlehWGF9ok31ASkFg';
 var currentUser = null;
 var playerData = null;
 var activeTab = 'inicio';
@@ -237,10 +238,7 @@ function $(id){ return document.getElementById(id); }
 
 // ── SETUP ──
 function loadConfig(){
-  var c = JSON.parse(localStorage.getItem('hpt_player_cfg') || '{}');
-  FB_URL = c.url || '';
-  FB_APIKEY = c.apikey || '';
-  return !!(FB_URL && FB_APIKEY);
+  return true;
 }
 function saveSetup(){
   var url = $('cfg-url').value.trim().replace(/\/+$/,'');
@@ -412,23 +410,81 @@ function aggPlayer(p){
   return {torneios,avb,profit_usd,swing:sw,grupo};
 }
 
+var STATS_ORDER=[
+  'VPIP','PFR','3BET TOTAL','FOLD VS 3BET',
+  '3BET BB VS STEAL','3BET SB VS STEAL','3BET NAI BTN VS CO',
+  'RFI EP','RFI MP','RFI HJ','RFI CO','RFI BTN','RFI SB',
+  'CALL HJ','CALL CO','CALL BTN','CALL SB','CALL BB',
+  '3BET CO','3BET BTN','3BET SB','3BET BB',
+  'SB LIMP','SB OPEN FOLD','SB LIMP/RAISE','SB LIMP/CALL','BB ISO VS SB LIMP',
+  'CBET FLOP OOP','XR BB','BB FOLD VS CBET','BB CALL VS CBET',
+  'BB FOLD VS 2ND BARREL','BB DONKBET TURN','XR OOP AGRESSOR',
+  'RAISE FLOP CBET IP','FOLD FLOP VS CBET IP','BET VS MISSED',
+  'PROBE TURN BB','DELAY CBET TURN OOP','CBET TURN',
+  'BET RIVER','?/?/F-XF','PROBE RIVER','BARREL TURN AFTER XR FLOP',
+  'W$WSF','WWSF','BXB VS BB','3RD BARREL IP VS BB',
+  'RFI CO','RFI BTN','Call CO','Call BTN','Call SB','Call BB',
+  '3bet CO','3bet BTN','3bet SB','3bet BB','SB Limp','Cbet Flop OOP',
+  'XR BB','Bet vs Missed','Probe Turn BB','Delayed Cbet Turn OOP','Cbet Turn',
+  'Bet River','Probe River','Barrel afer XR flop BB'
+];
+function sortStatKeys(keys){
+  return keys.slice().sort(function(a,b){
+    var ia=STATS_ORDER.indexOf(a),ib=STATS_ORDER.indexOf(b);
+    if(ia>=0&&ib>=0)return ia-ib;if(ia>=0)return-1;if(ib>=0)return 1;return 0;
+  });
+}
+
 var KPI_CONFIG = {
-  'VPIP':{min:28,max:30,peso:5,tol:1},'PFR':{min:19,max:22,peso:5,tol:1},'3BET TOTAL':{min:9,max:11,peso:5,tol:1},
-  'FOLD VS 3BET':{min:47,max:52,peso:5,tol:2},'3BET BB VS STEAL':{min:11,max:13,peso:5,tol:2},
-  'RFI EP':{min:19,max:21,peso:5,tol:1},'RFI MP':{min:25,max:27,peso:5,tol:2},'RFI HJ':{min:29,max:31,peso:5,tol:2},
-  'RFI CO':{min:39,max:41,peso:5,tol:3},'RFI BTN':{min:55,max:61,peso:5,tol:3},'RFI SB':{min:30,max:40,peso:4,tol:5},
-  'CALL BB':{min:55,max:60,peso:5,tol:2},'3BET BB':{min:8,max:12,peso:5,tol:1},
+  'VPIP':{min:28,max:30,peso:5,tol:1},'PFR':{min:19,max:22,peso:5,tol:1},
+  '3BET TOTAL':{min:9,max:11,peso:5,tol:1},'FOLD VS 3BET':{min:47,max:52,peso:5,tol:2},
+  '3BET BB VS STEAL':{min:11,max:13,peso:5,tol:2},'3BET SB VS STEAL':{min:14,max:16,peso:5,tol:2},
+  '3BET NAI BTN VS CO':{min:9,max:11,peso:5,tol:1},
+  'RFI EP':{min:19,max:21,peso:5,tol:1},'RFI MP':{min:25,max:27,peso:5,tol:2},
+  'RFI HJ':{min:29,max:31,peso:5,tol:2},'RFI CO':{min:39,max:41,peso:5,tol:3},
+  'RFI BTN':{min:55,max:61,peso:5,tol:3},'RFI SB':{min:30,max:40,peso:4,tol:5},
+  'CALL HJ':{min:7,max:9,peso:5,tol:1},'CALL CO':{min:9,max:12,peso:5,tol:1},
+  'CALL BTN':{min:15,max:19,peso:5,tol:1},'CALL SB':{min:13,max:15,peso:5,tol:1},
+  'CALL BB':{min:55,max:60,peso:5,tol:2},
+  '3BET CO':{min:7,max:9,peso:4,tol:1},'3BET BTN':{min:9,max:11,peso:4,tol:1},
+  '3BET SB':{min:10,max:14,peso:5,tol:1},'3BET BB':{min:8,max:12,peso:5,tol:1},
+  'SB LIMP':{min:25,max:35,peso:4,tol:5},'SB OPEN FOLD':{min:10,max:20,peso:5,tol:3},
+  'SB LIMP/RAISE':{min:5,max:15,peso:5,tol:5},'SB LIMP/CALL':{min:40,max:50,peso:5,tol:5},
+  'BB ISO VS SB LIMP':{min:35,max:45,peso:4,tol:5},
+  'CBET FLOP OOP':{min:15,max:25,peso:4,tol:5},'XR BB':{min:18,max:22,peso:5,tol:3},
+  'BB FOLD VS CBET':{min:42,max:46,peso:5,tol:1},'BB CALL VS CBET':{min:35,max:40,peso:5,tol:3},
+  'BB FOLD VS 2ND BARREL':{min:45,max:50,peso:5,tol:2},'BB DONKBET TURN':{min:10,max:15,peso:4,tol:3},
+  'XR OOP AGRESSOR':{min:15,max:25,peso:4,tol:5},'RAISE FLOP CBET IP':{min:10,max:15,peso:4,tol:3},
+  'FOLD FLOP VS CBET IP':{min:25,max:35,peso:5,tol:3},'BET VS MISSED':{min:40,max:50,peso:5,tol:5},
+  'PROBE TURN BB':{min:45,max:55,peso:3,tol:5},'DELAY CBET TURN OOP':{min:65,max:75,peso:4,tol:5},
   'CBET TURN':{min:55,max:62,peso:5,tol:3},'BET RIVER':{min:47,max:50,peso:5,tol:3},
-  'PROBE RIVER':{min:55,max:65,peso:5,tol:3},'W$WSF':{min:48,max:50,peso:5,tol:1},'WWSF':{min:48,max:50,peso:5,tol:1}
+  'W$WSF':{min:48,max:50,peso:5,tol:1},'WWSF':{min:48,max:50,peso:5,tol:1},
+  'PROBE RIVER':{min:55,max:65,peso:5,tol:3},'BARREL TURN AFTER XR FLOP':{min:60,max:66,peso:4,tol:3},
+  'BXB VS BB':{min:35,max:55,peso:5,tol:2},'3RD BARREL IP VS BB':{min:50,max:60,peso:5,tol:2},
+  '?/?/F-XF':{min:48,max:52,peso:5,tol:3}
 };
 
-function kpiColor(v, k){
+function kpiColor(v, k, alvo){
   var cfg = KPI_CONFIG[k] || KPI_CONFIG[(k||'').toUpperCase()];
-  if(!cfg) return '#e8f0fe';
-  var n = parseFloat(v); if(isNaN(n)) return '#e8f0fe';
-  if(n>=cfg.min && n<=cfg.max) return '#34d399';
-  var dev = n<cfg.min?(cfg.min-n):(n-cfg.max);
-  return dev<=cfg.tol ? '#fbbf24' : '#f87171';
+  if(cfg){
+    var n = parseFloat(v); if(isNaN(n)) return '#e8f0fe';
+    if(n>=cfg.min && n<=cfg.max) return '#34d399';
+    var dev = n<cfg.min?(cfg.min-n):(n-cfg.max);
+    return dev<=cfg.tol ? '#fbbf24' : '#f87171';
+  }
+  // fallback: use alvo range string e.g. "8 - 12"
+  if(alvo){
+    var parts = alvo.toString().replace(/\s/g,'').split('-');
+    if(parts.length===2){
+      var lo=parseFloat(parts[0]),hi=parseFloat(parts[1]),vv=parseFloat(v);
+      if(!isNaN(lo)&&!isNaN(hi)&&!isNaN(vv)){
+        if(vv>=lo&&vv<=hi) return '#34d399';
+        var tol=(hi-lo)*1.5;
+        return (vv>=lo-tol&&vv<=hi+tol)?'#fbbf24':'#f87171';
+      }
+    }
+  }
+  return '#e8f0fe';
 }
 
 function calcScore(estrategias){
@@ -465,7 +521,6 @@ function renderInicio(){
   html += '<div class="stat-card"><div class="stat-label">Torneios</div><div class="stat-value">'+fmtInt(a.torneios)+'</div></div>';
   html += '<div class="stat-card"><div class="stat-label">AVB Médio</div><div class="stat-value">US$ '+(a.avb?a.avb.toFixed(1):'—')+'</div></div>';
   html += '<div class="stat-card full"><div class="stat-label">Profit Total</div><div class="stat-value '+pc+'">'+fmtUSD(a.profit_usd)+'</div></div>';
-  html += '<div class="stat-card full"><div class="stat-label">Swing Total</div><div class="stat-value '+sc+'">'+(a.swing>=0?'+':'')+a.swing.toFixed(1)+' bi</div></div>';
   html += '</div>';
 
   if(score !== null){
@@ -497,41 +552,65 @@ function renderStats(){
   var estrategias = playerData.estrategias||[];
   if(!estrategias.length){ $('app-content').innerHTML='<div class="empty">📊<br>Nenhuma stat importada ainda.</div>'; return; }
 
-  var latest = estrategias.slice(-1)[0];
-  var stats = desanitizeStats(latest.stats||{});
+  var sorted = estrategias.slice().sort(function(a,b){return(a.data||'')>(b.data||'')?1:-1;});
   var score = calcScore(estrategias);
-  var mes = latest.data ? (latest.data.slice(5,7)+'/'+latest.data.slice(0,4)) : '—';
+
+  // Collect all stat keys across all months
+  var allKeys = [];
+  sorted.forEach(function(e){
+    var stats = desanitizeStats(e.stats||{});
+    Object.keys(stats).forEach(function(k){ if(!allKeys.includes(k)) allKeys.push(k); });
+  });
+  allKeys = sortStatKeys(allKeys);
 
   var html = '';
   if(score !== null){
     var col = scoreColor(score);
-    html += '<div class="score-card" style="background:'+col+'11;border:1px solid '+col+'44;margin-bottom:16px">';
-    html += '<div><span class="score-label-big" style="background:'+col+'">'+scoreLabel(score).toUpperCase()+'</span><div class="score-desc" style="color:#94a3b8;font-size:11px">Referência: '+mes+'</div></div>';
+    html += '<div class="score-card" style="background:'+col+'11;border:1px solid '+col+'44;margin-bottom:20px">';
+    html += '<div><span class="score-label-big" style="background:'+col+'">'+scoreLabel(score).toUpperCase()+'</span><div class="score-desc" style="color:#94a3b8;font-size:11px">Score do mês mais recente</div></div>';
     html += '<div class="score-num" style="color:'+col+'">'+score+'%</div></div>';
   }
 
-  var keys = Object.keys(stats);
-  html += '<div class="section-title">📈 Estatísticas — '+mes+'</div>';
-  html += '<div class="kpi-table">';
-  keys.forEach(function(k){
-    var s = stats[k];
-    var v = typeof s==='object'?s.valor:s;
-    var alvo = typeof s==='object'?s.alvo:null;
-    var cfg = KPI_CONFIG[k]||KPI_CONFIG[(k||'').toUpperCase()];
-    var alvoDisp = cfg ? cfg.min+' – '+cfg.max : (alvo||'—');
-    var col = kpiColor(v, k);
-    html += '<div class="kpi-row">';
-    html += '<span class="kpi-name">'+k+'</span>';
-    html += '<span class="kpi-alvo">'+alvoDisp+'</span>';
-    html += '<span class="kpi-val" style="color:'+col+'">'+v+'</span>';
-    html += '</div>';
+  html += '<div class="section-title">📈 Estatísticas</div>';
+
+  // Build table with months as columns
+  html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:auto">';
+
+  // Header
+  html += '<thead><tr>';
+  html += '<th style="text-align:left;padding:10px 14px;font-size:11px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;background:#071220;min-width:180px;position:sticky;left:0;z-index:2">Estatística</th>';
+  html += '<th style="text-align:center;padding:10px 14px;font-size:11px;color:#4a90d9;background:#071220;min-width:80px">Alvo</th>';
+  sorted.forEach(function(e){
+    var mesLabel = e.data ? (e.data.slice(5,7)+'/'+e.data.slice(0,4)) : '—';
+    html += '<th style="text-align:center;padding:10px 16px;font-size:14px;color:#a78bfa;background:#071220;font-family:\'Bebas Neue\',sans-serif;letter-spacing:1px;min-width:90px">'+mesLabel+'</th>';
   });
-  html += '</div>';
+  html += '</tr></thead><tbody>';
 
-  if(estrategias.length > 1){
-    html += '<div style="font-size:11px;color:#3a5a8a;text-align:center;margin-top:8px">Mostrando o mês mais recente</div>';
-  }
+  // Rows
+  allKeys.forEach(function(k){
+    var cfg = KPI_CONFIG[k]||KPI_CONFIG[(k||'').toUpperCase()];
+    var alvoDisp = cfg ? cfg.min+' – '+cfg.max : '—';
+    // Try to get alvo from any month
+    sorted.forEach(function(e){
+      var s = desanitizeStats(e.stats||{})[k];
+      if(s && typeof s==='object' && s.alvo && alvoDisp==='—') alvoDisp = s.alvo;
+    });
 
+    html += '<tr>';
+    html += '<td style="padding:9px 14px;border-top:1px solid #112040;color:#94a3b8;font-size:12px;background:#0a1628;position:sticky;left:0">'+k+'</td>';
+    html += '<td style="text-align:center;padding:9px 14px;border-top:1px solid #112040;color:#4a90d9;font-size:11px">'+alvoDisp+'</td>';
+    sorted.forEach(function(e){
+      var stats = desanitizeStats(e.stats||{});
+      var s = stats[k];
+      var v = s!=null?(typeof s==='object'?s.valor:s):null;
+      var alvo = s!=null&&typeof s==='object'?s.alvo:null;
+      var col = v!=null ? kpiColor(v, k, alvo) : '#3a5a8a';
+      html += '<td style="text-align:center;padding:9px 14px;border-top:1px solid #112040;color:'+col+';font-weight:'+(v!=null?'600':'400')+';font-size:13px">'+(v!=null?v:'—')+'</td>';
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
   $('app-content').innerHTML = html;
 }
 
@@ -548,15 +627,20 @@ function renderMentorias(){
 
   lista.forEach(function(m){
     var dataFmt = m.data ? m.data.slice(8,10)+'/'+m.data.slice(5,7)+'/'+m.data.slice(0,4) : '—';
+    var temFeedback = m.descricao||m.demanda||m.evolucao||m.campoLivre||m.resumo;
     html += '<div class="ment-card">';
     html += '<div class="ment-date">'+dataFmt+'</div>';
     html += '<div class="ment-mentor">Mentor: <span>'+(m.mentor||'—')+'</span>';
     if(m.tipo) html += ' · <span style="color:#fbbf24">'+m.tipo.toUpperCase()+'</span>';
     html += '</div>';
-    if(m.descricao){
-      html += '<div class="ment-feedback">'+m.descricao+'</div>';
+    if(!temFeedback){
+      html += '<div style="font-size:13px;color:#3a5a8a;margin-top:12px;font-style:italic">Sem feedback registrado.</div>';
     } else {
-      html += '<div style="font-size:12px;color:#3a5a8a;margin-top:8px;font-style:italic">Sem feedback registrado.</div>';
+      if(m.descricao) html += '<div class="ment-feedback"><span style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px">📋 Feedback</span>'+m.descricao+'</div>';
+      if(m.demanda)   html += '<div class="ment-feedback"><span style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px">📋 Demanda</span><div style="white-space:pre-wrap">'+m.demanda+'</div></div>';
+      if(m.evolucao)  html += '<div class="ment-feedback"><span style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px">📈 Evolução</span>'+m.evolucao+'</div>';
+      if(m.campoLivre)html += '<div class="ment-feedback"><span style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px">💬 Campo Livre</span>'+m.campoLivre+'</div>';
+      if(m.resumo)    html += '<div class="ment-feedback"><span style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px">📄 Resumo</span>'+m.resumo+'</div>';
     }
     html += '</div>';
   });
@@ -686,10 +770,7 @@ function showSendMsg(id, msg, type){
 
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', function(){
-  var ok = loadConfig();
-  if(!ok){
-    $('setup-screen').style.display='flex'; return;
-  }
+  loadConfig();
   // Try restore session
   var sess = JSON.parse(localStorage.getItem('hpt_player_session')||'null');
   if(sess && sess.uid){
