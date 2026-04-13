@@ -1469,9 +1469,11 @@ function renderAgendaPlayer(){
   var today = new Date().toISOString().slice(0,10);
 
   // Filter: aulas for player's group or "todos"
+  function normGrupo(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+  var grupoNorm=normGrupo(grupo);
   var filtered = playerAgendaItems.filter(function(a){
     if(!a.grupos || !a.grupos.length) return true; // no group = all
-    return a.grupos.some(function(g){ return g.toLowerCase().trim() === grupo; });
+    return a.grupos.some(function(g){ return normGrupo(g)===grupoNorm; });
   });
 
   var TIPO_LABEL = {'aula':'📚 Aula','treino':'🎯 Treino','mentoria':'💬 Mentoria Coletiva','revisao':'🔄 Revisão'};
