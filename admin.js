@@ -3062,8 +3062,6 @@ function openAulaForm(id){
   $('af-data').value=item?item.data||'':'';
   $('af-hora').value=item?item.hora||'':'';
   $('af-tipo').value=item?item.tipo||'aula':'aula';
-  $('af-desc').value=item?item.descricao||'':'';
-  $('af-link').value=item?item.link||'':'';
   // Render group checkboxes
   var grupos=[...new Set(players.flatMap(function(p){return(p.records||[]).map(function(r){return r.grupo;});}).filter(Boolean))].sort();
   var sel=item?item.grupos||[]:[]; 
