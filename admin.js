@@ -3112,8 +3112,13 @@ async function saveAula(){
   toast('✅ Aula salva!');
 }
 
-function renderAgenda(){
+async function renderAgenda(){
   var ra=$('results-area');if(!ra)return;
+  // Always fetch fresh data when tab opens
+  if(fbUrl){
+    ra.innerHTML='<div style="color:#3a5a8a;padding:20px;text-align:center">Carregando agenda...</div>';
+    await fetchAgenda();
+  }
   var today=new Date().toISOString().slice(0,10);
   var TIPO_LABEL={'aula':'📚 Aula','treino':'🎯 Treino','mentoria':'💬 Mentoria Coletiva','revisao':'🔄 Revisão'};
   var TIPO_COLOR={'aula':'#3b82f6','treino':'#a78bfa','mentoria':'#34d399','revisao':'#fbbf24'};
