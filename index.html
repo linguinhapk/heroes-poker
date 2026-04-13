@@ -278,8 +278,11 @@
       <div><label class="fl">Grupos</label>
         <div id="af-grupos" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:#040d18;border:1px solid #1e3a6e;border-radius:8px"></div>
       </div>
-      <div><label class="fl">Descrição <span style="color:#3a5a8a">(opcional)</span></label><textarea id="af-desc" class="fi" rows="2" placeholder="Tema, conteúdo, observações..."></textarea></div>
-      <div><label class="fl">Link <span style="color:#3a5a8a">(opcional)</span></label><input id="af-link" type="url" class="fi" placeholder="https://zoom.us/..."></div>
+      <div><label class="fl">Instrutor</label>
+        <select id="af-instrutor" class="fi">
+          <option value="">— Selecionar —</option>
+        </select>
+      </div>
     </div>
     <div class="mf"><button class="btn btn-ghost" onclick="closeAulaForm()">Cancelar</button><button class="btn btn-primary" onclick="saveAula()">💾 Salvar</button></div>
   </div>

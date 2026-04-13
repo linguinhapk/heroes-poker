@@ -3072,6 +3072,14 @@ function openAulaForm(id){
     return'<label style="display:flex;align-items:center;gap:5px;background:#071220;border:1px solid #1e3a6e;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#93c5fd">'
       +'<input type="checkbox" value="'+g+'" '+checked+' style="accent-color:#3b82f6">'+g+'</label>';
   }).join('');
+  // Populate instructors (mentores/coaches from players)
+  var instrutores=[...new Set(players.filter(function(p){return p.mentor||p.grupo==='coaches';}).map(function(p){return p.nome;}).filter(Boolean))].sort();
+  // Also add players that are coaches
+  var coaches=players.filter(function(p){return (p.grupo||'').toLowerCase().includes('coach');}).map(function(p){return p.nome;});
+  var allInstrutores=[...new Set([...instrutores,...coaches])].sort();
+  var selInst=item?item.instrutor||'':'';
+  $('af-instrutor').innerHTML='<option value="">— Selecionar —</option>'
+    +allInstrutores.map(function(n){return'<option value="'+n+'"'+(n===selInst?' selected':'')+'>'+n+'</option>';}).join('');
   $('aula-modal').classList.add('active');
   setTimeout(function(){$('af-titulo').focus();},80);
 }
@@ -3092,8 +3100,7 @@ async function saveAula(){
     hora:hora||'',
     tipo:$('af-tipo').value||'aula',
     grupos:grupos,
-    descricao:$('af-desc').value.trim(),
-    link:$('af-link').value.trim()
+    instrutor:$('af-instrutor').value||''
   };
   await pushAgendaItem(item);
   var idx=agendaItems.findIndex(function(a){return a.id===item.id;});
@@ -3130,8 +3137,7 @@ function renderAgenda(){
         +'<div style="font-size:14px;font-weight:600;color:#e8f0fe;margin-bottom:4px">'+a.titulo+'</div>'
         +'<div style="font-size:12px;color:#60a5fa;margin-bottom:4px">📅 '+dateFmt+(a.hora?' às '+a.hora:'')+'</div>'
         +'<div style="font-size:11px;color:#3a5a8a">👥 '+grupos+'</div>'
-        +(a.descricao?'<div style="font-size:12px;color:#94a3b8;margin-top:6px">'+a.descricao+'</div>':'')
-        +(a.link?'<a href="'+a.link+'" target="_blank" style="display:inline-block;margin-top:8px;font-size:12px;color:#60a5fa;text-decoration:none;background:#0d1e38;border:1px solid #1e3a6e;padding:4px 12px;border-radius:6px">🔗 Acessar link</a>':'')
+        +(a.instrutor?'<div style="font-size:11px;color:#a78bfa;margin-top:4px">👤 '+a.instrutor+'</div>':'')
       +'</div>'
       +'<div style="display:flex;gap:6px;flex-shrink:0">'
         +'<button data-id="'+a.id+'" onclick="openAulaForm(this.dataset.id)" style="background:transparent;border:none;color:#1e3a6e;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:5px">✏️</button>'
