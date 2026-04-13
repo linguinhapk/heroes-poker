@@ -324,6 +324,9 @@ function saveCfg(){fbUrl=($('fb-url')?.value||'').trim().replace(/\/+$/,'');loca
 
 // ── FIREBASE ──
 var fbBase=function(){return fbUrl+'/hpt_players';};
+var fbAgenda=function(){return fbUrl+'/hpt_agenda';};
+var agendaItems=[];
+var editAulaId=null;
 function ensurePlayers(){
   players.forEach(function(p){
     if(!p.id)p.id='p_'+Math.random().toString(36).slice(2,9);
@@ -2855,7 +2858,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
 function setTab(t){
   activeTab=t;
-  ['resultados','swings','volume','stats','mentorias','exjogadores'].forEach(function(tab){
+  ['resultados','swings','volume','stats','mentorias','exjogadores','agenda'].forEach(function(tab){
     var btn=$('tab-'+tab);
     if(btn)btn.classList.toggle('active',tab===t);
   });
@@ -2915,6 +2918,7 @@ function renderTab(){
   else if(activeTab==='stats')renderStats_tab();
   else if(activeTab==='mentorias')renderMentoriasTab();
   else if(activeTab==='exjogadores')renderExJogadores();
+  else if(activeTab==='agenda')renderAgenda();
 }
 
 
@@ -3009,7 +3013,7 @@ function showLoginErr(msg){var e=$('login-err');if(e){e.textContent=msg;e.style.
 
 function showApp(){
   var ls=$('login-screen');if(ls)ls.style.display='none';
-  loadCfg();fetchData();startSync();
+  loadCfg();fetchData();fetchAgenda();startSync();
 }
 
 function adminLogout(){
@@ -3018,3 +3022,142 @@ function adminLogout(){
   location.reload();
 }
 
+
+
+// ── AGENDA ──
+async function fetchAgenda(){
+  if(!fbUrl)return;
+  try{
+    var r=await fetch(fbAgenda()+'.json');
+    if(!r.ok)return;
+    var d=await r.json();
+    if(d&&typeof d==='object')agendaItems=Object.values(d).filter(Boolean);
+    else agendaItems=[];
+    agendaItems.sort(function(a,b){
+      var da=(a.data||'')+(a.hora||'');
+      var db=(b.data||'')+(b.hora||'');
+      return da>db?1:-1;
+    });
+  }catch(e){console.error('fetchAgenda error:',e);}
+}
+
+async function pushAgendaItem(item){
+  if(!fbUrl)return;
+  await fetch(fbAgenda()+'/'+item.id+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});
+}
+
+async function deleteAgendaItem(id){
+  if(!fbUrl)return;
+  await fetch(fbAgenda()+'/'+id+'.json',{method:'DELETE'});
+  agendaItems=agendaItems.filter(function(a){return a.id!==id;});
+  renderAgenda();
+  toast('Aula removida!');
+}
+
+function openAulaForm(id){
+  editAulaId=id||null;
+  var item=id?agendaItems.find(function(a){return a.id===id;}):null;
+  $('aula-modal-title').textContent=id?'Editar Aula':'Nova Aula';
+  $('af-titulo').value=item?item.titulo||'':'';
+  $('af-data').value=item?item.data||'':'';
+  $('af-hora').value=item?item.hora||'':'';
+  $('af-tipo').value=item?item.tipo||'aula':'aula';
+  $('af-desc').value=item?item.descricao||'':'';
+  $('af-link').value=item?item.link||'':'';
+  // Render group checkboxes
+  var grupos=[...new Set(players.flatMap(function(p){return(p.records||[]).map(function(r){return r.grupo;});}).filter(Boolean))].sort();
+  var sel=item?item.grupos||[]:[]; 
+  $('af-grupos').innerHTML=grupos.map(function(g){
+    var checked=sel.includes(g)?'checked':'';
+    return'<label style="display:flex;align-items:center;gap:5px;background:#071220;border:1px solid #1e3a6e;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#93c5fd">'
+      +'<input type="checkbox" value="'+g+'" '+checked+' style="accent-color:#3b82f6">'+g+'</label>';
+  }).join('');
+  $('aula-modal').classList.add('active');
+  setTimeout(function(){$('af-titulo').focus();},80);
+}
+
+function closeAulaForm(){$('aula-modal').classList.remove('active');}
+
+async function saveAula(){
+  var titulo=$('af-titulo').value.trim();
+  var data=$('af-data').value;
+  var hora=$('af-hora').value;
+  if(!titulo){toast('Digite o título da aula.','err');return;}
+  if(!data){toast('Selecione a data.','err');return;}
+  var grupos=Array.from($('af-grupos').querySelectorAll('input[type=checkbox]:checked')).map(function(c){return c.value;});
+  var item={
+    id:editAulaId||'aula_'+Date.now(),
+    titulo:titulo,
+    data:data,
+    hora:hora||'',
+    tipo:$('af-tipo').value||'aula',
+    grupos:grupos,
+    descricao:$('af-desc').value.trim(),
+    link:$('af-link').value.trim()
+  };
+  await pushAgendaItem(item);
+  var idx=agendaItems.findIndex(function(a){return a.id===item.id;});
+  if(idx>=0)agendaItems[idx]=item;else agendaItems.push(item);
+  agendaItems.sort(function(a,b){return((a.data||'')+(a.hora||''))>((b.data||'')+(b.hora||''))?1:-1;});
+  closeAulaForm();
+  renderAgenda();
+  toast('✅ Aula salva!');
+}
+
+function renderAgenda(){
+  var ra=$('results-area');if(!ra)return;
+  var today=new Date().toISOString().slice(0,10);
+  var TIPO_LABEL={'aula':'📚 Aula','treino':'🎯 Treino','mentoria':'💬 Mentoria Coletiva','revisao':'🔄 Revisão'};
+  var TIPO_COLOR={'aula':'#3b82f6','treino':'#a78bfa','mentoria':'#34d399','revisao':'#fbbf24'};
+
+  // Split upcoming and past
+  var upcoming=agendaItems.filter(function(a){return a.data>=today;});
+  var past=agendaItems.filter(function(a){return a.data<today;}).reverse();
+
+  function aulaCard(a){
+    var isPast=a.data<today,isToday=a.data===today;
+    var col=TIPO_COLOR[a.tipo]||'#3b82f6';
+    var lbl=TIPO_LABEL[a.tipo]||a.tipo;
+    var dateFmt=a.data?a.data.slice(8)+'/'+a.data.slice(5,7)+'/'+a.data.slice(0,4):'—';
+    var grupos=a.grupos&&a.grupos.length?a.grupos.join(', '):'Todos';
+    return'<div style="background:#071220;border:1px solid '+(isToday?col:'#1e3a6e')+';border-radius:10px;padding:14px 16px;margin-bottom:10px;opacity:'+(isPast?'0.6':'1')+'">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
+      +'<div style="flex:1">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+          +(isToday?'<span style="background:#16a34a;color:#fff;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:700">HOJE</span>':'')
+          +'<span style="background:'+col+'22;color:'+col+';font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid '+col+'44">'+lbl+'</span>'
+        +'</div>'
+        +'<div style="font-size:14px;font-weight:600;color:#e8f0fe;margin-bottom:4px">'+a.titulo+'</div>'
+        +'<div style="font-size:12px;color:#60a5fa;margin-bottom:4px">📅 '+dateFmt+(a.hora?' às '+a.hora:'')+'</div>'
+        +'<div style="font-size:11px;color:#3a5a8a">👥 '+grupos+'</div>'
+        +(a.descricao?'<div style="font-size:12px;color:#94a3b8;margin-top:6px">'+a.descricao+'</div>':'')
+        +(a.link?'<a href="'+a.link+'" target="_blank" style="display:inline-block;margin-top:8px;font-size:12px;color:#60a5fa;text-decoration:none;background:#0d1e38;border:1px solid #1e3a6e;padding:4px 12px;border-radius:6px">🔗 Acessar link</a>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'
+        +'<button data-id="'+a.id+'" onclick="openAulaForm(this.dataset.id)" style="background:transparent;border:none;color:#1e3a6e;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:5px">✏️</button>'
+        +'<button data-id="'+a.id+'" onclick="if(confirm(&quot;Remover esta aula?&quot;))deleteAgendaItem(this.dataset.id)" style="background:transparent;border:none;color:#3a2020;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:5px">🗑</button>'
+      +'</div>'
+      +'</div></div>';
+  }
+
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+    +'<div style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:2px;font-weight:600">📅 Agenda de Aulas</div>'
+    +'<button class="btn btn-primary btn-sm" onclick="openAulaForm()">+ Nova Aula</button>'
+    +'</div>';
+
+  if(!agendaItems.length){
+    html+='<div class="empty">📅<br>Nenhuma aula cadastrada ainda.<br><button class="btn btn-primary" style="margin-top:14px" onclick="openAulaForm()">+ Adicionar primeira aula</button></div>';
+    ra.innerHTML=html;return;
+  }
+
+  if(upcoming.length){
+    html+='<div style="font-size:10px;color:#34d399;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:10px">Próximas ('+upcoming.length+')</div>';
+    html+=upcoming.map(aulaCard).join('');
+  }
+  if(past.length){
+    html+='<div style="font-size:10px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin:18px 0 10px">Passadas</div>';
+    html+=past.map(aulaCard).join('');
+  }
+
+  ra.innerHTML=html;
+}

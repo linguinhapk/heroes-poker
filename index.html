@@ -87,6 +87,7 @@
   <button class="tab-btn" id="tab-stats" onclick="setTab('stats')">stats</button>
   <button class="tab-btn" id="tab-mentorias" onclick="setTab('mentorias')">mentorias</button>
   <button class="tab-btn" id="tab-exjogadores" onclick="setTab('exjogadores')">ex-jogadores</button>
+  <button class="tab-btn" id="tab-agenda" onclick="setTab('agenda')">📅 agenda</button>
 </div>
 
 <div id="sg" class="stats-grid"></div>
@@ -255,5 +256,34 @@
 
 <script src="admin.js"></script>
 
+
+<!-- ── AGENDA MODAL ── -->
+<div class="overlay" id="aula-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="mh"><h2 id="aula-modal-title">Nova Aula</h2><button class="xbtn" onclick="closeAulaForm()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:14px">
+      <div><label class="fl">Título</label><input id="af-titulo" type="text" class="fi" placeholder="Ex: Aula de PFR - Preflop"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="fl">Data</label><input id="af-data" type="date" class="fi"></div>
+        <div><label class="fl">Hora</label><input id="af-hora" type="time" class="fi"></div>
+      </div>
+      <div><label class="fl">Tipo</label>
+        <select id="af-tipo" class="fi">
+          <option value="aula">📚 Aula</option>
+          <option value="treino">🎯 Treino</option>
+          <option value="mentoria">💬 Mentoria Coletiva</option>
+          <option value="revisao">🔄 Revisão</option>
+        </select>
+      </div>
+      <div><label class="fl">Grupos</label>
+        <div id="af-grupos" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:#040d18;border:1px solid #1e3a6e;border-radius:8px"></div>
+      </div>
+      <div><label class="fl">Descrição <span style="color:#3a5a8a">(opcional)</span></label><textarea id="af-desc" class="fi" rows="2" placeholder="Tema, conteúdo, observações..."></textarea></div>
+      <div><label class="fl">Link <span style="color:#3a5a8a">(opcional)</span></label><input id="af-link" type="url" class="fi" placeholder="https://zoom.us/..."></div>
+    </div>
+    <div class="mf"><button class="btn btn-ghost" onclick="closeAulaForm()">Cancelar</button><button class="btn btn-primary" onclick="saveAula()">💾 Salvar</button></div>
+  </div>
+</div>
+<!-- ── / AGENDA MODAL ── -->
 </body>
 </html>
