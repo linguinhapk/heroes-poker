@@ -1577,6 +1577,18 @@ async function setPlayerReta(pid,value){
   logHistory('reta_alterada',p.nome+' → '+value);
   await pushPlayer(p);renderDetailExtras(pid);
 }
+async function setPlayerGrupo(pid,value){
+  var p=players.find(function(x){return x.id===pid;});if(!p)return;
+  var old=p.grupo||'';
+  p.grupo=value;
+  if(!p.historico)p.historico=[];
+  if(value&&value!==old)p.historico.push({tipo:'grupo',texto:'Grupo: '+(old||'—')+' → '+value,data:new Date().toISOString().slice(0,10)});
+  logHistory('grupo_alterado',p.nome+' → '+value);
+  await pushPlayer(p);
+  renderDetailExtras(pid);
+  toast('Grupo atualizado!');
+}
+
 async function setPlayerMentoria(pid,value){
   var p=players.find(function(x){return x.id===pid;});if(!p)return;
   p.ultimaMentoria=value;await pushPlayer(p);
@@ -1667,6 +1679,18 @@ function renderDetailExtras(pid){
         +'<option value="">— selecione —</option>'
         +retas.map(function(r){return'<option value="'+r+'" '+(p.reta===r?'selected':'')+'>'+r+'</option>';}).join('')
       +'</select>'
+    +'</div>'
+    // GRUPO
+    +'<div class="dc" style="grid-column:span 2">'
+      +'<div class="dcl" style="margin-bottom:8px">Grupo</div>'
+      +(function(){
+        var grupos=[...new Set(players.flatMap(function(x){return(x.records||[]).map(function(r){return r.grupo;});}).filter(Boolean))].sort();
+        var current=p.grupo||aggPlayer(p).grupo||'';
+        return'<select data-pid="'+pid+'" onchange="setPlayerGrupo(this.dataset.pid,this.value)" style="width:100%;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:7px 10px;border-radius:7px;font-size:13px;outline:none;font-family:Inter,sans-serif">'
+          +'<option value="">— selecione —</option>'
+          +grupos.map(function(g){return'<option value="'+g+'" '+(g===current?'selected':'')+'>'+g+'</option>';}).join('')
+          +'</select>';
+      })()
     +'</div>'
     // ÚLTIMA MENTORIA
     +'<div class="dc">'
