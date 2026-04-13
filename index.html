@@ -2916,12 +2916,13 @@ function handleStatsFile(file){
 var ADMIN_PWD_KEY = 'hpt_admin_pwd';
 
 function initAuth(){
-  // Limpa chave antiga se existir
+  // Limpa chaves antigas de versões anteriores
   localStorage.removeItem('hpt_admin_hash');
-  // Senha padrão: heroes2025 (codificada em base64)
-  if(!localStorage.getItem(ADMIN_PWD_KEY)){
-    localStorage.setItem(ADMIN_PWD_KEY, btoa('heroes2025'));
-  }
+  // Valida se o valor salvo é btoa válido; se não, reseta
+  var _saved = localStorage.getItem(ADMIN_PWD_KEY);
+  var _ok = false;
+  if(_saved){try{atob(_saved);_ok=true;}catch(e){}}
+  if(!_ok){localStorage.setItem(ADMIN_PWD_KEY, btoa('heroes2025'));}
   if(sessionStorage.getItem('hpt_authed')==='1'){
     showApp(); return;
   }
