@@ -119,6 +119,28 @@ td{padding:8px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:m
 </style>
 </head>
 <body>
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:#040d18;z-index:9999;align-items:center;justify-content:center;font-family:Inter,sans-serif">
+  <div style="background:#071220;border:1px solid #1e3a6e;border-radius:16px;padding:40px 36px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(0,0,0,.6)">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:32px;margin-bottom:8px">🃏</div>
+      <div style="font-size:20px;font-weight:700;color:#e8f0fe;letter-spacing:.5px">Heroes Poker</div>
+      <div style="font-size:12px;color:#3a5a8a;margin-top:4px">Painel Administrativo</div>
+    </div>
+    <div id="login-err" style="display:none;background:#1c0a0a;border:1px solid #7f1d1d;color:#f87171;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px;text-align:center"></div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:10px;color:#3a5a8a;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Senha</label>
+      <input type="password" id="login-pwd" placeholder="Digite a senha..." autocomplete="current-password"
+        style="width:100%;background:#040d18;border:1px solid #1e3a6e;color:#e8f0fe;padding:11px 14px;border-radius:8px;font-family:Inter,sans-serif;font-size:14px;outline:none;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" style="width:100%;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border:none;color:#fff;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.3px">
+      Entrar
+    </button>
+  </div>
+</div>
+<!-- ── / LOGIN SCREEN ── -->
+
 <div class="app">
 <div class="header">
   <div class="logo">
@@ -131,13 +153,14 @@ td{padding:8px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:m
     </div>
   </div>
   <div id="header-actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-left:auto">
+    <button onclick="changeAdminPassword()" title="Alterar senha" style="background:transparent;border:1px solid #1e3a6e;color:#3a5a8a;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif">🔑</button>
+    <button onclick="adminLogout()" title="Sair" style="background:transparent;border:1px solid #1e3a6e;color:#3a5a8a;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif">🚪 Sair</button>
     <div id="setup-mini" style="display:none;align-items:center;gap:6px">
       <span id="sync-status" style="font-size:11px;color:#3a5a8a"></span>
       <button class="btn btn-ghost btn-sm" onclick="$('setup-box').style.display=$('setup-box').style.display==='none'?'':'none'">⚙️</button>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="openImport()">📸 Importar Resultado</button>
     <button class="btn btn-ghost btn-sm" onclick="openImportStats()">📊 Importar Stats</button>
-    <button class="btn btn-ghost btn-sm" onclick="openBulkFotos()">🖼️ Importar Fotos</button>
     <button class="btn btn-ghost btn-sm" onclick="openMerge()">🔀 Duplicados</button>
     <button class="btn btn-ghost btn-sm" onclick="exportBackup()">⬇️ Backup</button>
     <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆️ Restaurar<input type="file" accept=".json" onchange="importBackup(this)" style="display:none"></label>
@@ -186,20 +209,7 @@ td{padding:8px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:m
       <div class="fg"><label>Nick</label><input id="f-nick" placeholder="@apelido"></div>
       <div class="fsec">Contato</div>
       <div class="fg"><label>Telefone</label><input id="f-tel" placeholder="+55 11 99999-9999"></div>
-      <div class="fg"><label>Email</label><input id="f-email" placeholder="email@email.com"></div>
-      <div class="fsec">Foto</div>
-      <div class="fg">
-        <label>Foto do Jogador</label>
-        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-          <div id="foto-preview" style="width:72px;height:72px;border-radius:50%;background:#0d1e38;border:2px solid #1e3a6e;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0"><span style="color:#3a5a8a;font-size:22px">👤</span></div>
-          <div style="flex:1;min-width:180px">
-            <label style="display:inline-flex;align-items:center;gap:8px;background:#0d1e38;border:1px solid #1e3a6e;color:#93c5fd;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;font-family:Inter,sans-serif">📁 Escolher foto<input type="file" accept="image/*" id="f-foto-file" onchange="handleFotoUpload(this)" style="display:none"></label>
-            <div style="font-size:11px;color:#3a5a8a;margin-top:6px">JPG, PNG, WEBP · Será comprimida automaticamente</div>
-            <button type="button" id="f-foto-clear" onclick="clearFoto()" style="display:none;background:transparent;border:none;color:#f87171;font-size:11px;cursor:pointer;margin-top:4px;padding:0;font-family:Inter,sans-serif">✕ Remover foto</button>
-          </div>
-        </div>
-        <input type="hidden" id="f-foto">
-      </div>
+      <div class="fg"><label>Email</label><input id="f-email" placeholder="email@email.com"></div>      </div>
       <div class="fsec">Notas</div>
       <div class="fg"><label>Notas</label><textarea id="f-notas" rows="3" placeholder="Observações..."></textarea></div>
     </div>
@@ -295,22 +305,6 @@ td{padding:8px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:m
 </div>
 
 <!-- BULK FOTO MODAL -->
-<div class="overlay" id="bulk-foto-modal">
-  <div class="modal" style="max-width:640px">
-    <div class="mh"><h2>🖼️ Importar Fotos em Lote</h2><button class="xbtn" onclick="closeBulkFotos()">✕</button></div>
-    <div class="mb">
-      <div style="margin-bottom:16px">
-        <label style="display:inline-flex;align-items:center;gap:8px;background:#0d1e38;border:1px solid #1e3a6e;color:#93c5fd;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:Inter,sans-serif">📁 Selecionar fotos<input type="file" accept="image/*" multiple id="bulk-foto-input" onchange="handleBulkFotos(this)" style="display:none"></label>
-      </div>
-      <div id="bulk-foto-preview"></div>
-    </div>
-    <div class="mf" id="bulk-foto-footer" style="display:none;justify-content:space-between;align-items:center">
-      <div style="font-size:11px;color:#3a5a8a"><span style="color:#34d399">✓ exato</span> · <span style="color:#fbbf24">~ parcial</span> · <span style="color:#f97316">~ fuzzy</span></div>
-      <div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="closeBulkFotos()">Cancelar</button><button class="btn btn-primary" onclick="saveBulkFotos()">💾 Salvar Fotos</button></div>
-    </div>
-  </div>
-</div>
-
 <!-- MERGE MODAL -->
 <div class="overlay" id="merge-modal">
   <div class="modal" style="max-width:600px">
@@ -374,6 +368,7 @@ var _savingUntil=0;
 
 // ── GLOBAL STATE ──
 var players=[];
+var mergeStatsTab='auto';
 var activeTab='resultados';
 var filterGrupo='todos';
 var filterPeriod='todos';
@@ -653,24 +648,7 @@ function tierBar(){
 function swingColor(sw){if(sw>=0){if(sw<300)return'#6ee7b7';if(sw<400)return'#34d399';if(sw<500)return'#10b981';if(sw<700)return'#059669';return'#047857';}return Math.abs(sw)<=200?'#fbbf24':'#f87171';}
 function volBarColor(p){return p<80?'#ef4444':'#fbbf24';}
 
-function driveImgUrl(url){
-  if(!url)return'';
-  // Already a direct URL
-  if(url.includes('uc?export=view')||url.includes('uc?id='))return url;
-  // https://drive.google.com/file/d/FILE_ID/view
-  var m=url.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
-  if(m)return'https://drive.google.com/uc?export=view&id='+m[1];
-  // https://drive.google.com/open?id=FILE_ID
-  var m2=url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
-  if(m2)return'https://drive.google.com/uc?export=view&id='+m2[1];
-  return url;
-}
-function playerAvatar(p,size){
-  size=size||56;
-  var url=driveImgUrl(p.foto||'');
-  if(url)return'<img src="'+url+'" alt="'+p.nome+'" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;border:2px solid #1e3a6e" onerror="this.parentNode.innerHTML=\'<div class=dav style=width:'+size+'px;height:'+size+'px;font-size:'+(size*0.38)+'px>'+ini(p.nome)+'</div>\'">';
-  return'<div class="dav" style="width:'+size+'px;height:'+size+'px;font-size:'+(size*0.38)+'px">'+ini(p.nome)+'</div>';
-}
+function playerAvatar(p,size){size=size||56;return'<div class="dav" style="width:'+size+'px;height:'+size+'px;font-size:'+(size*0.38)+'px">'+ini(p.nome)+'</div>';}
 function fmtMesLabel(data){if(!data||typeof data!=='string')return'—';var p=data.split('-');if(p.length<2)return data;var mes=parseInt(p[1])-1;return(mes>=0&&mes<12?MESES[mes]:null)||data;}
 
 // ── CONFIG ──
@@ -942,9 +920,7 @@ function renderResultsOnly(){
     var sc=calcScore(p.estrategias||[]);
     var pc=a.profit_usd>=0?'#34d399':'#f87171';
     var swc=sw>=0?'#34d399':'#f87171';
-    var avatar=p.foto
-      ?'<img src="'+driveImgUrl(p.foto)+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #1e3a6e;flex-shrink:0" onerror="this.style.display=\'none\'">'
-      :'<div style="width:36px;height:36px;border-radius:50%;background:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;font-family:Bebas Neue,monospace">'+ini(p.nome)+'</div>';
+    var avatar='<div class="dav" style="width:36px;height:36px;font-size:13px">'+ini(p.nome)+'</div>';
     var scBadge=sc!==null
       ?'<span style="font-size:10px;color:'+scoreColor(sc)+';background:'+scoreColor(sc)+'22;border:1px solid '+scoreColor(sc)+'44;padding:1px 6px;border-radius:10px">'+sc+'%</span>'
       :'';
@@ -1315,7 +1291,19 @@ function renderComparacaoGrupos(allWithStats,grupos){
 }
 
 // ── MERGE STATS ──
-function normStatName(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');}
+function normStatName(s){
+  return(s||'')
+    // desanitize firebase escape sequences first
+    .replace(/__S__/g,'/').replace(/__D__/g,'$').replace(/__P__/g,'.').replace(/__H__/g,'#').replace(/__LB__/g,'[').replace(/__RB__/g,']').replace(/__Q__/g,'?')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .trim()
+    .replace(/\s+/g,' ')
+    // normalize common separators
+    .replace(/[-_\/]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
 function findStatDuplicates(){
   var allKeys={};
   players.forEach(function(p){(p.estrategias||[]).forEach(function(e){Object.keys(e.stats||{}).forEach(function(k){var n=normStatName(k);if(!allKeys[n])allKeys[n]=[];if(!allKeys[n].includes(k))allKeys[n].push(k);});});});
@@ -1334,63 +1322,122 @@ function renderMergeStatsModal(){
   if(mergeStatsTab==='auto'){
     var dupes=findStatDuplicates();
     body.innerHTML=tabNav+(dupes.length?dupes.map(function(group,gi){
-      var cards=group.map(function(k,ki){var count=0;players.forEach(function(p){(p.estrategias||[]).forEach(function(e){if(e.stats&&e.stats[k]!=null)count++;});});
-        return'<div style="background:#071220;border:1px solid #1e3a6e;border-radius:8px;padding:10px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div style="font-weight:600;color:#c4b5fd;font-size:13px">'+k+'</div><div style="font-size:11px;color:#3a5a8a;margin-top:2px">'+count+' registros</div></div>'
-          +(ki>0?'<button data-gi="'+gi+'" data-ki="'+ki+'" onclick="mergeStatKey(+this.dataset.gi,0,+this.dataset.ki)" style="background:#6d28d9;border:none;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">Mesclar em &quot;'+group[0]+'&quot;</button>':'<span style="font-size:11px;color:#a78bfa;padding:4px 10px;background:#2e1065;border-radius:20px">principal</span>')+'</div>';
+      var cards=group.map(function(k,ki){
+        var count=0;players.forEach(function(p){(p.estrategias||[]).forEach(function(e){if(e.stats&&e.stats[k]!=null)count++;});});
+        var displayName=desanitizeStatKeys({[k]:1}),cleanName=Object.keys(displayName)[0];
+        return'<div style="background:#071220;border:1px solid #1e3a6e;border-radius:8px;padding:10px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
+          +'<div><div style="font-weight:600;color:#c4b5fd;font-size:13px">'+cleanName+'</div>'
+          +(cleanName!==k?'<div style="font-size:10px;color:#3a5a8a;margin-top:1px">chave: '+k+'</div>':'')
+          +'<div style="font-size:11px;color:#3a5a8a;margin-top:2px">'+count+' registros</div></div>'
+          +(ki>0?'<button data-gi="'+gi+'" data-ki="'+ki+'" onclick="mergeStatKey(+this.dataset.gi,0,+this.dataset.ki)" style="background:#6d28d9;border:none;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">Mesclar em &quot;'+group[0]+'&quot;</button>':'<span style="font-size:11px;color:#a78bfa;padding:4px 10px;background:#2e1065;border-radius:20px">✓ manter esta</span>')
+          +'</div>';
       }).join('');
-      return'<div style="background:#0d1e38;border:1px solid #4a1d96;border-radius:10px;padding:14px;margin-bottom:12px"><div style="font-size:11px;color:#a78bfa;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🔀 '+(gi+1)+' — &quot;'+normStatName(group[0])+'&quot;</div>'+cards+'</div>';
-    }).join(''):'<div style="color:#34d399;text-align:center;padding:24px;font-size:14px">✓ Nenhuma stat duplicada encontrada!</div>');
+      var mainClean=Object.keys(desanitizeStatKeys({[group[0]]:1}))[0];
+      return'<div style="background:#0d1e38;border:1px solid #4a1d96;border-radius:10px;padding:14px;margin-bottom:12px">'
+        +'<div style="font-size:11px;color:#a78bfa;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🔀 '+(gi+1)+' — &quot;'+mainClean+'&quot;</div>'
+        +'<div style="font-size:11px;color:#64748b;margin-bottom:6px">'+group.length+' variações encontradas</div>'
+        +cards+'</div>';
+    }).join('')
+    +'<div style="text-align:right;margin-top:8px"><button onclick="mergeAllStatDupes()" style="background:#6d28d9;border:none;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">🔀 Mesclar Todas Automaticamente</button></div>'
+    :'<div style="color:#34d399;text-align:center;padding:24px;font-size:14px">✓ Nenhuma stat duplicada encontrada!</div>');
   }else{
-    var keyOpts=allStatKeys.map(function(k){return'<option value="'+k+'">'+k+'</option>';}).join('');
     body.innerHTML=tabNav
-      +'<div style="font-size:12px;color:#3a5a8a;margin-bottom:16px">Selecione as stats que quer renomear e o nome de destino.</div>'
-      +'<div style="background:#071220;border:1px solid #4a1d96;border-radius:10px;padding:16px;margin-bottom:12px">'
-      +'<div class="fg"><label>Stats a renomear</label>'
-      +'<div id="manual-stat-list" style="display:flex;flex-wrap:wrap;gap:6px;max-height:200px;overflow-y:auto;background:#0d1e38;border:1px solid #1e3a6e;border-radius:8px;padding:10px">'
-      +allStatKeys.map(function(k){var count=0;players.forEach(function(p){(p.estrategias||[]).forEach(function(e){if(e.stats&&e.stats[k]!=null)count++;});});return'<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;padding:3px 8px;border-radius:5px;font-size:12px;color:#c4b5fd" title="'+count+' registros"><input type="checkbox" class="stat-chk" value="'+k+'" style="accent-color:#7c3aed"> '+k+' <span style="font-size:10px;color:#3a5a8a">('+count+')</span></label>';}).join('')
+      +'<div style="font-size:12px;color:#94a3b8;margin-bottom:14px">Marque as stats que quer mesclar. Depois escolha qual nome manter.</div>'
+      +'<div style="background:#071220;border:1px solid #1e3a6e;border-radius:10px;overflow:hidden;margin-bottom:14px">'
+      +'<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;padding:8px 14px;background:#0d1e38;border-bottom:1px solid #1e3a6e;font-size:10px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px">'
+      +'<span>Stat</span><span style="text-align:center;width:70px">Registros</span><span style="text-align:center;width:80px">Manter</span></div>'
+      +'<div style="max-height:280px;overflow-y:auto">'
+      +allStatKeys.map(function(k){
+        var count=0;players.forEach(function(p){(p.estrategias||[]).forEach(function(e){if(e.stats&&e.stats[k]!=null)count++;});});
+        var cleanK=Object.keys(desanitizeStatKeys({[k]:1}))[0];
+        return'<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;padding:9px 14px;border-bottom:1px solid #0a1830" onmouseover="this.style.background=\'#0d1e38\'" onmouseout="this.style.background=\'\'">'
+          +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+          +'<input type="checkbox" class="stat-chk" value="'+k+'" onchange="updateMergeKeepOptions()" style="accent-color:#7c3aed;width:14px;height:14px">'
+          +'<span style="font-size:13px;color:#e2e8f0">'+cleanK+'</span>'
+          +(cleanK!==k?'<span style="font-size:10px;color:#3a5a8a">(raw: '+k+')</span>':'')
+          +'</label>'
+          +'<span style="text-align:center;width:70px;font-size:12px;color:#64748b">'+count+'</span>'
+          +'<div style="text-align:center;width:80px"><input type="radio" name="keep-stat" value="'+k+'" class="keep-radio" disabled style="accent-color:#7c3aed;width:14px;height:14px"></div>'
+          +'</div>';
+      }).join('')
       +'</div></div>'
-      +'<div class="fg"><label>Renomear para</label>'
-      +'<div style="display:flex;gap:8px">'
-      +'<input id="manual-target-input" type="text" style="flex:1;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:9px 11px;border-radius:8px;font-size:13px;outline:none;font-family:Inter,sans-serif" placeholder="Digite o nome correto...">'
-      +'<select id="stat-key-select" onchange="document.getElementById(\'manual-target-input\').value=this.value" style="background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:9px 11px;border-radius:8px;font-size:12px;outline:none;font-family:Inter,sans-serif"><option value="">ou escolha existente...</option>'+keyOpts+'</select>'
-      +'</div></div>'
-      +'</div>'
-      +'<div style="display:flex;justify-content:flex-end"><button onclick="doManualMerge()" style="background:#6d28d9;border:none;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">🔀 Mesclar Selecionadas</button></div>';
+      +'<div id="merge-manual-hint" style="font-size:12px;color:#64748b;margin-bottom:10px;text-align:center">Selecione 2 ou mais stats para ativar o botão de mesclar</div>'
+      +'<div style="display:flex;justify-content:flex-end">'
+      +'<button id="do-manual-merge-btn" onclick="doManualMerge()" disabled style="background:#4a1d96;border:none;color:#888;padding:9px 22px;border-radius:8px;font-size:13px;cursor:not-allowed;font-family:Inter,sans-serif;transition:all .2s">🔀 Mesclar Selecionadas</button>'
+      +'</div>';
   }
+}
+async function mergeAllStatDupes(){
+  var dupes=findStatDuplicates();
+  if(!dupes.length){toast('Nenhuma duplicata encontrada!');return;}
+  var total=dupes.reduce(function(s,g){return s+g.length-1;},0);
+  if(!confirm('Mesclar todas as '+total+' variações duplicadas automaticamente?'))return;
+  var count=0;
+  dupes.forEach(function(group){
+    var keepKey=group[0];
+    group.slice(1).forEach(function(removeKey){
+      players.forEach(function(p){(p.estrategias||[]).forEach(function(e){var stats=e.stats||{};if(stats[removeKey]!=null){if(stats[keepKey]==null)stats[keepKey]=stats[removeKey];delete stats[removeKey];count++;}});});
+    });
+  });
+  var toSave=players.filter(function(p){return(p.estrategias||[]).length>0;});
+  for(var p of toSave)await pushEstrategias(p.id,p.estrategias);
+  logHistory('stats_mesclado','Mescla automática: '+total+' variações ('+count+' registros)');
+  toast('✅ '+count+' registros atualizados!');renderMergeStatsModal();renderStats_tab();
 }
 async function mergeStatKey(gi,keepIdx,removeIdx){
   var dupes=findStatDuplicates();if(!dupes[gi])return;var group=dupes[gi];var keepKey=group[keepIdx];var removeKey=group[removeIdx];
   if(!confirm('Renomear "'+removeKey+'" para "'+keepKey+'"?'))return;var count=0;
   players.forEach(function(p){(p.estrategias||[]).forEach(function(e){var stats=e.stats||{};if(stats[removeKey]!=null){if(stats[keepKey]==null)stats[keepKey]=stats[removeKey];delete stats[removeKey];count++;}});});
-  var toSave=players.filter(function(p){return(p.estrategias||[]).length>0;});for(var p of toSave)await pushPlayer(p);
+  var toSave=players.filter(function(p){return(p.estrategias||[]).length>0;});for(var p of toSave)await pushEstrategias(p.id,p.estrategias);
   logHistory('stats_mesclado','"'+removeKey+'" → "'+keepKey+'" ('+count+' registros)');toast('"'+removeKey+'" → "'+keepKey+'" em '+count+' registros!');renderMergeStatsModal();renderStats_tab();
 }
+function updateMergeKeepOptions(){
+  var checked=[...document.querySelectorAll('.stat-chk:checked')].map(function(c){return c.value;});
+  var radios=document.querySelectorAll('.keep-radio');
+  radios.forEach(function(r){
+    var isChecked=checked.includes(r.value);
+    r.disabled=!isChecked;
+    if(!isChecked)r.checked=false;
+  });
+  // Auto-select first checked as keep
+  if(checked.length>0){
+    var first=document.querySelector('.keep-radio[value="'+checked[0]+'"]');
+    if(first&&!document.querySelector('.keep-radio:checked'))first.checked=true;
+  }
+  var btn=$('do-manual-merge-btn');
+  var hint=$('merge-manual-hint');
+  if(checked.length>=2){
+    if(btn){btn.disabled=false;btn.style.background='#6d28d9';btn.style.color='#fff';btn.style.cursor='pointer';}
+    if(hint)hint.textContent='Selecione qual nome manter (rádio à direita) e clique em Mesclar.';
+  }else{
+    if(btn){btn.disabled=true;btn.style.background='#4a1d96';btn.style.color='#888';btn.style.cursor='not-allowed';}
+    if(hint)hint.textContent='Selecione 2 ou mais stats para ativar o botão de mesclar';
+  }
+}
 async function doManualMerge(){
-  var checkboxes=document.querySelectorAll('.stat-chk:checked');var target=$('manual-target-input')?.value.trim();
-  if(!checkboxes.length){toast('Selecione ao menos uma stat.','err');return;}if(!target){toast('Digite o nome de destino.','err');return;}
-  var toRename=[...checkboxes].map(function(c){return c.value;}).filter(function(k){return k!==target;});
-  if(!toRename.length){toast('Nenhuma stat para renomear.','err');return;}
-  if(!confirm('Renomear '+toRename.length+' stat(s) para "'+target+'"?'))return;var count=0;
+  var checked=[...document.querySelectorAll('.stat-chk:checked')].map(function(c){return c.value;});
+  var keepRadio=document.querySelector('.keep-radio:checked');
+  if(checked.length<2){toast('Selecione ao menos 2 stats.','err');return;}
+  var target=keepRadio?keepRadio.value:checked[0];
+  var toRename=checked.filter(function(k){return k!==target;});
+  var targetClean=Object.keys(desanitizeStatKeys({[target]:1}))[0];
+  if(!confirm('Mesclar '+toRename.length+' stat(s) em "'+targetClean+'"?\n\nAs seguintes serão apagadas:\n'+toRename.map(function(k){return'• '+Object.keys(desanitizeStatKeys({[k]:1}))[0];}).join('\n')))return;
+  var count=0;
   players.forEach(function(p){(p.estrategias||[]).forEach(function(e){var stats=e.stats||{};toRename.forEach(function(oldKey){if(stats[oldKey]!=null){if(stats[target]==null)stats[target]=stats[oldKey];delete stats[oldKey];count++;}});});});
-  var toSave=players.filter(function(p){return(p.estrategias||[]).length>0;});for(var p of toSave)await pushPlayer(p);
-  logHistory('stats_mesclado',toRename.join(', ')+' → "'+target+'" ('+count+' registros)');toast(toRename.length+' stat(s) → "'+target+'" em '+count+' registros!');renderMergeStatsModal();renderStats_tab();
+  var toSave=players.filter(function(p){return(p.estrategias||[]).length>0;});
+  for(var p of toSave)await pushEstrategias(p.id,p.estrategias);
+  logHistory('stats_mesclado',toRename.join(', ')+' → "'+targetClean+'" ('+count+' registros)');
+  toast('✅ '+count+' registros atualizados!');renderMergeStatsModal();renderStats_tab();
 }
 
 // ── FORM ──
 function openForm(id){editId=id||null;var p=id?players.find(function(x){return x.id===id;}):null;$('mt').textContent=p?'Editar Jogador':'Novo Jogador';['nome','nick','tel','email','notas'].forEach(function(k){var el=$('f-'+k);if(el)el.value=p?.[k]||'';});
-  // Load foto
-  var fotoVal=p?p.foto||'':'';
-  var fi=$('f-foto');if(fi)fi.value=fotoVal;
-  var prev=$('foto-preview');
-  if(prev){
-    if(fotoVal){prev.innerHTML='<img src="'+fotoVal+'" style="width:100%;height:100%;object-fit:cover">';var clr=$('f-foto-clear');if(clr)clr.style.display='';}
-    else{prev.innerHTML='<span style="color:#3a5a8a;font-size:22px">👤</span>';var clr=$('f-foto-clear');if(clr)clr.style.display='none';}
-  }$('modal').classList.add('active');}
+$('modal').classList.add('active');}
 function closeModal(){$('modal').classList.remove('active');editId=null;}
 async function savePlayer(){
   var nome=$('f-nome').value.trim();if(!nome){toast('Nome obrigatório!','err');return;}
   var existing=editId?players.find(function(x){return x.id===editId;}):null;
-  var p={id:editId||Date.now().toString(),nome,nick:$('f-nick').value.trim(),tel:$('f-tel').value.trim(),email:$('f-email').value.trim(),notas:$('f-notas').value.trim(),foto:$('f-foto')?.value.trim()||'',records:existing?.records||[],estrategias:existing?.estrategias||[],swingBaseline:existing?.swingBaseline||0,grupo:existing?.grupo||'',mentor:existing?.mentor||'',mentores:existing?.mentores||[],reta:existing?.reta||'',ultimaMentoria:existing?.ultimaMentoria||''};
+  var p={id:editId||Date.now().toString(),nome,nick:$('f-nick').value.trim(),tel:$('f-tel').value.trim(),email:$('f-email').value.trim(),notas:$('f-notas').value.trim(),records:existing?.records||[],estrategias:existing?.estrategias||[],swingBaseline:existing?.swingBaseline||0,grupo:existing?.grupo||'',mentor:existing?.mentor||'',mentores:existing?.mentores||[],reta:existing?.reta||'',ultimaMentoria:existing?.ultimaMentoria||''};
   if(editId){var i=players.findIndex(function(x){return x.id===editId;});players[i]=p;}else players.push(p);
   // Track grupo change in historico
   if(editId&&existing){
@@ -1519,131 +1566,13 @@ async function analyze(dataUrl){
 function renderExtracted(data){$('eb').innerHTML=data.map(function(p,i){var ex=players.find(function(x){return x.nome.toLowerCase()===p.nome.toLowerCase();});var tag=ex?'<span style="font-size:10px;color:#fbbf24;background:#451a03;padding:1px 6px;border-radius:10px;margin-left:5px">atualizar</span>':'<span style="font-size:10px;color:#34d399;background:#052e16;padding:1px 6px;border-radius:10px;margin-left:5px">novo</span>';var pc=p.profit>=0?'#34d399':'#f87171';return'<tr id="r'+i+'"><td><input type="checkbox" checked onchange="togRow('+i+',this)"></td><td>'+p.nome+tag+'</td><td style="color:#60a5fa;font-size:10px">'+(p.grupo||'—')+'</td><td>'+(p.torneios||'—')+'</td><td style="color:#93c5fd">'+(p.avb!=null?p.avb.toFixed(1):'—')+'</td><td style="color:'+pc+';font-weight:600">'+(p.profit>=0?'+':'')+((p.profit||0).toFixed(2))+'</td></tr>';}).join('');$('sa').checked=true;}
 function togRow(i,cb){document.getElementById('r'+i).classList.toggle('skip',!cb.checked);}
 function toggleAll(cb){extData.forEach(function(_,i){var r=document.getElementById('r'+i);r.querySelector('input[type=checkbox]').checked=cb.checked;r.classList.toggle('skip',!cb.checked);});}
-function handleFotoUpload(input){
-  var file=input.files[0];if(!file)return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var img=new Image();
-    img.onload=function(){
-      var canvas=document.createElement('canvas');
-      var MAX=200;var w=img.width,h=img.height;
-      if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
-      canvas.width=w;canvas.height=h;
-      var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);
-      var compressed=canvas.toDataURL('image/jpeg',0.82);
-      var fi=document.getElementById('f-foto');if(fi)fi.value=compressed;
-      var prev=document.getElementById('foto-preview');if(prev)prev.innerHTML='<img src="'+compressed+'" style="width:100%;height:100%;object-fit:cover">';
-      var clr=document.getElementById('f-foto-clear');if(clr)clr.style.display='';
-    };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-function clearFoto(){
-  var fi=document.getElementById('f-foto');if(fi)fi.value='';
-  var prev=document.getElementById('foto-preview');if(prev)prev.innerHTML='<span style="color:#3a5a8a;font-size:22px">👤</span>';
-  var clr=document.getElementById('f-foto-clear');if(clr)clr.style.display='none';
-  var ffile=document.getElementById('f-foto-file');if(ffile)ffile.value='';
-}
 
 // ── BULK FOTO IMPORT ──
-function normNameMatch(s){
-  return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/[_\-\.]/g,' ').replace(/\s+/g,' ');
-}
-function levenshtein(a,b){
-  var m=a.length,n=b.length;var dp=[];
-  for(var i=0;i<=m;i++){dp[i]=[i];for(var j=1;j<=n;j++)dp[i][j]=0;}
-  for(var j=0;j<=n;j++)dp[0][j]=j;
-  for(var i=1;i<=m;i++)for(var j=1;j<=n;j++){
-    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-  }
-  return dp[m][n];
-}
-function bestPlayerMatch(filename){
-  var fn=normNameMatch(filename.replace(/\.[^.]+$/,''));
-  var best=null,bestScore=Infinity;
-  players.forEach(function(p){
-    var pn=normNameMatch(p.nome);
-    // exact match
-    if(fn===pn)return best={p:p,score:0,type:'exact'};
-    // partial: filename contains all words of player name or vice versa
-    var fnWords=fn.split(' ');var pnWords=pn.split(' ');
-    var allMatch=pnWords.every(function(w){return fnWords.some(function(fw){return fw.includes(w)||w.includes(fw);});});
-    var dist=levenshtein(fn,pn);
-    var score=allMatch?Math.max(0,dist-2):dist;
-    if(score<bestScore){bestScore=score;best={p:p,score:score,type:dist===0?'exact':allMatch?'parcial':'fuzzy'};}
-  });
-  return best&&best.score<=8?best:null;
-}
 
-var bulkFotoFiles=[];
-var bulkFotoMatches=[];
 
-function openBulkFotos(){
-  $('bulk-foto-modal').classList.add('active');
-  $('bulk-foto-input').value='';
-  $('bulk-foto-preview').innerHTML='<div style="color:#3a5a8a;font-size:13px;text-align:center;padding:20px">Selecione os arquivos de foto acima</div>';
-  $('bulk-foto-footer').style.display='none';
-}
-function closeBulkFotos(){$('bulk-foto-modal').classList.remove('active');}
 
-function handleBulkFotos(input){
-  var files=Array.from(input.files);if(!files.length)return;
-  bulkFotoFiles=files;bulkFotoMatches=[];
-  var container=$('bulk-foto-preview');
-  container.innerHTML='<div style="color:#fbbf24;font-size:12px;padding:10px">Processando '+files.length+' fotos...</div>';
-  var processed=0;
-  files.forEach(function(file,idx){
-    var match=bestPlayerMatch(file.name);
-    var reader=new FileReader();
-    reader.onload=function(e){
-      var img=new Image();
-      img.onload=function(){
-        var MAX=200;var w=img.width,h=img.height;
-        if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
-        var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-        var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);
-        var compressed=canvas.toDataURL('image/jpeg',0.82);
-        bulkFotoMatches[idx]={file:file,compressed:compressed,match:match,selected:!!match,customPlayer:match?match.p.nome:''};
-        processed++;
-        if(processed===files.length)renderBulkPreview();
-      };
-      img.src=e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
-function renderBulkPreview(){
-  var container=$('bulk-foto-preview');
-  var playerNames=players.map(function(p){return p.nome;}).sort();
-  var opts='<option value="">— não atribuir —</option>'+playerNames.map(function(n){return'<option value="'+n+'">'+n+'</option>';}).join('');
-  container.innerHTML=bulkFotoMatches.map(function(m,i){
-    var matchInfo=m.match
-      ?'<span style="font-size:10px;color:'+(m.match.type==='exact'?'#34d399':m.match.type==='parcial'?'#fbbf24':'#f97316')+';background:'+(m.match.type==='exact'?'#052e16':m.match.type==='parcial'?'#451a03':'#1c0a00')+';padding:2px 7px;border-radius:10px;margin-left:6px">'+(m.match.type==='exact'?'✓ exato':m.match.type==='parcial'?'~ parcial':'~ fuzzy')+'</span>'
-      :'<span style="font-size:10px;color:#f87171;background:#1c0000;padding:2px 7px;border-radius:10px;margin-left:6px">✗ não encontrado</span>';
-    return'<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #112040;flex-wrap:wrap">'
-      +'<input type="checkbox" '+(m.selected?'checked':'')+' onchange="bulkFotoMatches['+i+'].selected=this.checked" style="accent-color:#3b82f6;width:16px;height:16px;flex-shrink:0">'
-      +'<img src="'+m.compressed+'" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #1e3a6e;flex-shrink:0">'
-      +'<div style="flex:1;min-width:160px">'
-        +'<div style="font-size:12px;color:#94a3b8;margin-bottom:4px">📄 '+m.file.name+matchInfo+'</div>'
-        +'<select onchange="bulkFotoMatches['+i+'].customPlayer=this.value;bulkFotoMatches['+i+'].selected=!!this.value" style="width:100%;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:6px 10px;border-radius:7px;font-size:12px;outline:none;font-family:Inter,sans-serif">'+opts.replace('value="'+(m.match?m.match.p.nome:'')+'"','value="'+(m.match?m.match.p.nome:'')+'" selected')+'</select>'
-      +'</div>'
-    +'</div>';
-  }).join('');
-  $('bulk-foto-footer').style.display='flex';
-}
 
-async function saveBulkFotos(){
-  var toSave=bulkFotoMatches.filter(function(m){return m.selected&&m.customPlayer;});
-  if(!toSave.length){toast('Nenhuma foto selecionada.','err');return;}
-  var saved=0;
-  toSave.forEach(function(m){
-    var p=players.find(function(x){return x.nome===m.customPlayer;});
-    if(p){p.foto=m.compressed;saved++;pushPlayer(p);}
-  });
-  closeBulkFotos();renderTab();logHistory('fotos_lote',saved+' fotos importadas em lote');toast(saved+' foto(s) salvas!');
-}
 
 // ── PLAYER EXTRA FIELDS ──
 var DEFAULT_RETAS=['Reta 1','Reta 2','Reta 3','Reta 4','Reta 5','Reta 6','Reta 7','Reta 1B','Reta 2B','Reta 3B','Reta 4B','Reta 5B','Reta 6B','Reta 7B'];
@@ -1822,7 +1751,7 @@ function renderHistorico(){
     'jogador_criado':'🟢','jogador_editado':'✏️','jogador_removido':'🔴',
     'record_importado':'📸','stats_importado':'📊','stats_editado':'✏️',
     'stats_apagado':'🗑','intervencao':'⚡','mentor_alterado':'👤',
-    'reta_alterada':'📋','mentoria_alterada':'📅','foto_atualizada':'🖼️',
+    'reta_alterada':'📋','mentoria_alterada':'📅',
     'fotos_lote':'🖼️','backup_exportado':'⬇️','backup_importado':'⬆️',
     'duplicado_mesclado':'🔀','stats_mesclado':'🔀'
   };
@@ -1833,7 +1762,7 @@ function renderHistorico(){
     'stats_importado':'Stats importadas','stats_editado':'Stats editadas',
     'stats_apagado':'Stats apagadas','intervencao':'Intervenção registrada',
     'mentor_alterado':'Mentor alterado','reta_alterada':'Reta alterada',
-    'mentoria_alterada':'Última mentoria atualizada','foto_atualizada':'Foto atualizada',
+    'mentoria_alterada':'Última mentoria atualizada',
     'fotos_lote':'Fotos importadas em lote','backup_exportado':'Backup exportado',
     'backup_importado':'Backup importado','duplicado_mesclado':'Jogadores mesclados',
     'stats_mesclado':'Stats mescladas'
@@ -2159,9 +2088,7 @@ function renderMentoriasTab(){
     var lastMFmt=p.ultimaMentoria&&p.ultimaMentoria.length>=10
       ?p.ultimaMentoria.slice(8,10)+'/'+p.ultimaMentoria.slice(5,7)+'/'+p.ultimaMentoria.slice(0,4)
       :'—';
-    var avatar=p.foto
-      ?'<img src="'+driveImgUrl(p.foto)+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #1e3a6e;flex-shrink:0" onerror="this.style.display=\'none\'">'
-      :'<div style="width:36px;height:36px;border-radius:50%;background:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;font-family:Bebas Neue,monospace">'+ini(p.nome)+'</div>';
+    var avatar='<div class="dav" style="width:36px;height:36px;font-size:13px">'+ini(p.nome)+'</div>';
     var reta=p.reta?'<span style="font-size:11px;color:#a78bfa;background:#1e1040;padding:2px 8px;border-radius:10px">'+p.reta+'</span>':'';
     var mentor=p.mentor?'<span style="font-size:11px;color:#60a5fa">'+p.mentor+'</span>':'<span style="font-size:11px;color:#3a5a8a">—</span>';
     return'<tr class="dr" data-id="'+p.id+'" onclick="showDetail(this.dataset.id)">'
@@ -2244,9 +2171,7 @@ function renderExJogadores(){
     var pc=a.profit_usd>=0?'#34d399':'#f87171';
     var saidaFmt=p.dataSaida&&p.dataSaida.length>=10
       ?p.dataSaida.slice(8,10)+'/'+p.dataSaida.slice(5,7)+'/'+p.dataSaida.slice(0,4):'—';
-    var avatar=p.foto
-      ?'<img src="'+driveImgUrl(p.foto)+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #3a2020;flex-shrink:0;filter:grayscale(60%)" onerror="this.style.display=\'none\'">'
-      :'<div style="width:36px;height:36px;border-radius:50%;background:#3a2020;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#94a3b8;flex-shrink:0;font-family:Bebas Neue,monospace">'+ini(p.nome)+'</div>';
+    var avatar='<div class="dav" style="width:36px;height:36px;font-size:13px">'+ini(p.nome)+'</div>';
     return'<tr class="dr" data-id="'+p.id+'" onclick="showDetail(this.dataset.id)">'
       +'<td><div style="display:flex;align-items:center;gap:8px;opacity:.7">'+avatar
         +'<div><div class="pname" style="font-size:13px">'+p.nome+'</div>'
@@ -2984,6 +2909,59 @@ function handleStatsFile(file){
     analyzeStats(e.target.result);
   };
   reader.readAsDataURL(file);
+}
+
+
+// ── AUTH ──
+var ADMIN_PWD_KEY = 'hpt_admin_pwd';
+
+function initAuth(){
+  // Limpa chave antiga se existir
+  localStorage.removeItem('hpt_admin_hash');
+  // Senha padrão: heroes2025 (codificada em base64)
+  if(!localStorage.getItem(ADMIN_PWD_KEY)){
+    localStorage.setItem(ADMIN_PWD_KEY, btoa('heroes2025'));
+  }
+  if(sessionStorage.getItem('hpt_authed')==='1'){
+    showApp(); return;
+  }
+  var ls=$('login-screen');
+  if(ls){ls.style.display='flex';setTimeout(function(){var i=$('login-pwd');if(i)i.focus();},80);}
+}
+
+function doLogin(){
+  var pwd=($('login-pwd')&&$('login-pwd').value||'').trim();
+  if(!pwd){showLoginErr('Digite a senha.');return;}
+  var saved=localStorage.getItem(ADMIN_PWD_KEY);
+  if(btoa(pwd)===saved){
+    sessionStorage.setItem('hpt_authed','1');
+    showApp();
+  }else{
+    showLoginErr('Senha incorreta.');
+    if($('login-pwd')){$('login-pwd').value='';$('login-pwd').focus();}
+  }
+}
+
+function showLoginErr(msg){var e=$('login-err');if(e){e.textContent=msg;e.style.display='block';setTimeout(function(){e.style.display='none';},3000);}}
+
+function showApp(){
+  var ls=$('login-screen');if(ls)ls.style.display='none';
+  loadCfg();fetchData();startSync();
+}
+
+function adminLogout(){
+  sessionStorage.removeItem('hpt_authed');
+  location.reload();
+}
+
+function changeAdminPassword(){
+  var atual=prompt('Senha atual:');if(atual===null)return;
+  var saved=localStorage.getItem(ADMIN_PWD_KEY);
+  if(btoa(atual)!==saved){toast('Senha atual incorreta.','err');return;}
+  var nova=prompt('Nova senha (mín. 6 caracteres):');if(!nova||nova.length<6){toast('Senha muito curta.','err');return;}
+  var confirma=prompt('Confirme a nova senha:');if(nova!==confirma){toast('As senhas não coincidem.','err');return;}
+  localStorage.setItem(ADMIN_PWD_KEY, btoa(nova));
+  toast('✅ Senha alterada!');
 }
 
 </script>
