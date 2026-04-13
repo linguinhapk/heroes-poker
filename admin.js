@@ -3070,14 +3070,11 @@ function openAulaForm(id){
     return'<label style="display:flex;align-items:center;gap:5px;background:#071220;border:1px solid #1e3a6e;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#93c5fd">'
       +'<input type="checkbox" value="'+g+'" '+checked+' style="accent-color:#3b82f6">'+g+'</label>';
   }).join('');
-  // Populate instructors (mentores/coaches from players)
-  var instrutores=[...new Set(players.filter(function(p){return p.mentor||p.grupo==='coaches';}).map(function(p){return p.nome;}).filter(Boolean))].sort();
-  // Also add players that are coaches
-  var coaches=players.filter(function(p){return (p.grupo||'').toLowerCase().includes('coach');}).map(function(p){return p.nome;});
-  var allInstrutores=[...new Set([...instrutores,...coaches])].sort();
-  var selInst=item?item.instrutor||'':'';
-  $('af-instrutor').innerHTML='<option value="">— Selecionar —</option>'
-    +allInstrutores.map(function(n){return'<option value="'+n+'"'+(n===selInst?' selected':'')+'>'+n+'</option>';}).join('');
+  // Populate instrutor datalist from localStorage
+  $('af-instrutor').value=item?item.instrutor||'':'';
+  var savedInstrutores=JSON.parse(localStorage.getItem('hpt_instrutores')||'[]');
+  var dl=$('af-instrutor-list');
+  if(dl)dl.innerHTML=savedInstrutores.map(function(n){return'<option value="'+n+'"/>';}).join('');
   $('aula-modal').classList.add('active');
   setTimeout(function(){$('af-titulo').focus();},80);
 }
@@ -3091,6 +3088,12 @@ async function saveAula(){
   if(!titulo){toast('Digite o título da aula.','err');return;}
   if(!data){toast('Selecione a data.','err');return;}
   var grupos=Array.from($('af-grupos').querySelectorAll('input[type=checkbox]:checked')).map(function(c){return c.value;});
+  var instrutorVal=($('af-instrutor').value||'').trim();
+  // Save new instrutor to localStorage list
+  if(instrutorVal){
+    var savedList=JSON.parse(localStorage.getItem('hpt_instrutores')||'[]');
+    if(!savedList.includes(instrutorVal)){savedList.push(instrutorVal);savedList.sort();localStorage.setItem('hpt_instrutores',JSON.stringify(savedList));}
+  }
   var item={
     id:editAulaId||'aula_'+Date.now(),
     titulo:titulo,
@@ -3098,7 +3101,7 @@ async function saveAula(){
     hora:hora||'',
     tipo:$('af-tipo').value||'aula',
     grupos:grupos,
-    instrutor:$('af-instrutor').value||''
+    instrutor:instrutorVal
   };
   await pushAgendaItem(item);
   var idx=agendaItems.findIndex(function(a){return a.id===item.id;});
