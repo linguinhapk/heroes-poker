@@ -250,9 +250,10 @@ td{padding:8px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:m
       <div style="margin-bottom:12px">
         <label style="font-size:10px;color:#3a5a8a;display:block;margin-bottom:6px">JOGADOR</label>
         <div style="position:relative">
-          <input type="text" id="stats-player-search" placeholder="Clique para selecionar jogador..." oninput="filterStatsPlayers()" onfocus="filterStatsPlayers()" autocomplete="off"
-            style="width:100%;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:8px 12px;border-radius:7px;font-family:Inter,sans-serif;outline:none;cursor:pointer">
-          <div id="stats-player-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#0d1e38;border:1px solid #3b82f6;border-radius:7px;max-height:180px;overflow-y:auto;z-index:10;margin-top:2px"></div>
+          <input type="text" id="stats-player-search" placeholder="Digite o nome para buscar..." oninput="filterStatsPlayers()" autocomplete="off"
+            style="width:100%;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:8px 36px 8px 12px;border-radius:7px;font-family:Inter,sans-serif;outline:none">
+          <button onclick="toggleStatsDropdown()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#4a90d9;cursor:pointer;font-size:14px;padding:2px 4px;line-height:1">▾</button>
+          <div id="stats-player-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#0d1e38;border:1px solid #3b82f6;border-radius:7px;max-height:200px;overflow-y:auto;z-index:100;margin-top:2px"></div>
         </div>
         <input type="hidden" id="stats-player-select">
         <div id="stats-player-selected" style="display:none;margin-top:6px;padding:6px 12px;background:#0a2040;border:1px solid #3b82f6;border-radius:6px;font-size:12px;color:#60a5fa;align-items:center;justify-content:space-between">
@@ -900,7 +901,10 @@ function setTierAndRender(t,tab){filterTier=t;document.querySelectorAll('.tier-b
 // ── RESULTS ONLY ──
 function renderResultsOnly(){
   var ra=document.getElementById('results-area');if(!ra)return;
-  renderFilterControls();
+  // Só re-renderiza os filtros se o input de busca NÃO estiver ativo (evita perder foco ao digitar)
+  var searchActive = document.activeElement && document.activeElement.id === 'player-search';
+  if(!searchActive) renderFilterControls();
+  else updateBtnStates();
   var recFilter=function(r){
     var rg=(r.grupo||'').toLowerCase();
     var mg=filterGrupo==='todos'||rg===filterGrupo.toLowerCase()||canonGrupo(rg)===canonGrupo(filterGrupo);
@@ -2383,13 +2387,13 @@ function openImportStats(){
   var si=$('stats-ini');var sf=$('stats-fim');
   if(si)si.value=ld.ini||t;
   if(sf)sf.value=ld.fim||t;
-  buildStatsPlayerList();var ak=localStorage.getItem('hpt_ant')||'';var ak2=$('ant-key-stats');if(ak2&&ak)ak2.value=ak;
+  // Limpar jogador ao abrir (não salva da anterior)
+  var sel=$('stats-player-select');var inp=$('stats-player-search');var box=$('stats-player-selected');var nm=$('stats-player-selected-name');
+  if(sel)sel.value='';if(inp){inp.value='';inp.style.display='';}if(box)box.style.display='none';if(nm)nm.textContent='';
+  var dd=$('stats-player-dropdown');if(dd)dd.style.display='none';
+  buildStatsPlayerList();
+  var ak=localStorage.getItem('hpt_ant')||'';var ak2=$('ant-key-stats');if(ak2&&ak)ak2.value=ak;
   $('imod-stats').classList.add('active');
-  setTimeout(function(){
-    var ps=$('stats-player-search');
-    if(ps){ps.focus();filterStatsPlayers();}
-    var ak=localStorage.getItem('hpt_ant')||'';var ak2=$('ant-key-stats');if(ak2&&ak)ak2.value=ak;
-  },80);
 }
 function closeImportStats(){importStatsOpen=false;$('imod-stats').classList.remove('active');}
 function buildStatsPlayerList(){
@@ -2412,6 +2416,11 @@ function selectStatsPlayer(name){
   if(dd)dd.style.display='none';
   if(nm)nm.textContent=name;
   if(box)box.style.display='flex';
+}
+function toggleStatsDropdown(){
+  var dd=$('stats-player-dropdown');if(!dd)return;
+  if(dd.style.display==='none'||!dd.style.display){filterStatsPlayers();dd.style.display='';}
+  else{dd.style.display='none';}
 }
 function filterStatsPlayers(){
   var inp=$('stats-player-search');var dd=$('stats-player-dropdown');if(!inp||!dd)return;
