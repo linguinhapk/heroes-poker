@@ -381,15 +381,28 @@ async function fetchData(){
 }
 async function pushPlayer(p){
   if(!fbUrl)return;
-  _savingUntil=Date.now()+15000; // pause sync for 15s
-  // Update local cache immediately before network call
+  _savingUntil=Date.now()+15000;
+  // Update local cache immediately
   var _ci=players.findIndex(function(x){return x.id===p.id;});if(_ci>=0)players[_ci]=p;
   localStorage.setItem('hpt_cache',JSON.stringify(players));
   syncStatus('syncing','Salvando...');
   try{
-    await fetch(fbBase()+'/'+p.id+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    // PATCH: atualiza só os campos enviados, sem sobrescrever o que outro admin pode ter alterado
+    // Exceto records e estrategias que têm seus próprios métodos — aqui salvamos apenas metadados do jogador
+    var payload={
+      id:p.id, nome:p.nome, nick:p.nick||'', tel:p.tel||'', email:p.email||'',
+      notas:p.notas||'', grupo:p.grupo||'', reta:p.reta||'', mentor:p.mentor||'',
+      mentores:p.mentores||[], ultimaMentoria:p.ultimaMentoria||'',
+      swingBaseline:p.swingBaseline||0, inativo:p.inativo||false,
+      historico:p.historico||[]
+    };
+    await fetch(fbBase()+'/'+p.id+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    // Records também precisam ser salvos (são editados aqui)
+    if(p.records!==undefined){
+      await fetch(fbBase()+'/'+p.id+'/records.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p.records||[])});
+    }
     localStorage.setItem('hpt_cache',JSON.stringify(players));
-    _savingUntil=Date.now()+10000; // keep 10s buffer after save
+    _savingUntil=Date.now()+10000;
     syncStatus('ok','Salvo!');
   }catch(e){_savingUntil=0;syncStatus('err','Erro: '+e.message);}
 }
@@ -1031,9 +1044,10 @@ function showDetail(id){
       +(p.notas?'<div class="ir" style="flex-direction:column;gap:4px"><span class="il">📝 Notas</span><span style="color:#c7d2fe;font-size:12px">'+p.notas+'</span></div>':'')
       +'</div>'
       +'<div id="detail-extras"></div>'
-      +buildResultsChart(p)+'<div style="font-size:10px;color:#2563eb;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin:16px 0 10px">Histórico por Mês</div>'
+      +'<div style="font-size:10px;color:#2563eb;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin:16px 0 10px">Histórico por Mês</div>'
       +buildMonthHistory(p)
-      +buildStatsChart(p)+buildEstrategias(p)+buildMentoriaHistory(p);
+      +buildEstrategias(p)+buildMentoriaHistory(p)
+      +buildResultsChart(p)+buildStatsChart(p);
     $('results-area').innerHTML=html;
     renderDetailExtras(id);
   }catch(err){
