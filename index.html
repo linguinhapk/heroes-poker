@@ -394,6 +394,8 @@ var selectedPlayers=[];
 var statsCompareMode='jogadores';
 var swingMonthFilter='';
 var swingYearFilter='';
+var swingCustomIni='';
+var swingCustomFim='';
 var swingMinLoss=150;
 var swingMinGain=300;
 var statsMonthFilter='';
@@ -1337,11 +1339,20 @@ function renderSwings(){
   var allDates=players.flatMap(function(p){return(p.records||[]).map(function(r){return r.data;});}).filter(Boolean);
   var allMonths=[...new Set(allDates.map(function(d){return d.slice(0,7);}))].sort().reverse();
   var allYears=[...new Set(allDates.map(function(d){return d.slice(0,4);}))].sort().reverse();
+  var isCustomActive=!!(swingCustomIni||swingCustomFim);
   var dateBar='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'
     +'<span style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-right:4px">Período:</span>'
-    +'<button class="gbtn '+(!swingMonthFilter&&!swingYearFilter?'gbtn-active':'')+' " onclick="swingMonthFilter=\'\';swingYearFilter=\'\';renderSwings()">Todos</button>'
-    +allYears.map(function(y){return'<button class="gbtn '+(swingYearFilter===y&&!swingMonthFilter?'gbtn-active':'')+' " data-y="'+y+'" onclick="swingYearFilter=this.dataset.y;swingMonthFilter=\'\';renderSwings()">'+y+'</button>';}).join('')
-    +allMonths.map(function(m){return'<button class="gbtn '+(swingMonthFilter===m?'gbtn-active':'')+' " data-m="'+m+'" onclick="swingMonthFilter=this.dataset.m;swingYearFilter=\'\';renderSwings()">'+MESES[parseInt(m.slice(5))-1]+' '+m.slice(0,4)+'</button>';}).join('')
+    +'<button class="gbtn '+(!swingMonthFilter&&!swingYearFilter&&!isCustomActive?'gbtn-active':'')+' " onclick="swingMonthFilter=\'\';swingYearFilter=\'\';swingCustomIni=\'\';swingCustomFim=\'\';renderSwings()">Todos</button>'
+    +allYears.map(function(y){return'<button class="gbtn '+(swingYearFilter===y&&!swingMonthFilter&&!isCustomActive?'gbtn-active':'')+' " data-y="'+y+'" onclick="swingYearFilter=this.dataset.y;swingMonthFilter=\'\';swingCustomIni=\'\';swingCustomFim=\'\';renderSwings()">'+y+'</button>';}).join('')
+    +allMonths.map(function(m){return'<button class="gbtn '+(swingMonthFilter===m&&!isCustomActive?'gbtn-active':'')+' " data-m="'+m+'" onclick="swingMonthFilter=this.dataset.m;swingYearFilter=\'\';swingCustomIni=\'\';swingCustomFim=\'\';renderSwings()">'+MESES[parseInt(m.slice(5))-1]+' '+m.slice(0,4)+'</button>';}).join('')
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;background:#071220;border-radius:8px;border:1px solid '+(isCustomActive?'#3b82f6':'#1e3a6e')+';margin-bottom:8px">'
+    +'<span style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:1px;font-weight:600">Personalizado:</span>'
+    +'<input type="date" id="swing-ini" value="'+swingCustomIni+'" style="background:#040d18;border:1px solid #1e3a6e;color:#e8f0fe;padding:5px 8px;border-radius:6px;font-size:12px;outline:none;color-scheme:dark;font-family:Inter,sans-serif">'
+    +'<span style="font-size:11px;color:#3a5a8a">até</span>'
+    +'<input type="date" id="swing-fim" value="'+swingCustomFim+'" style="background:#040d18;border:1px solid #1e3a6e;color:#e8f0fe;padding:5px 8px;border-radius:6px;font-size:12px;outline:none;color-scheme:dark;font-family:Inter,sans-serif">'
+    +'<button onclick="swingCustomIni=document.getElementById(\'swing-ini\').value;swingCustomFim=document.getElementById(\'swing-fim\').value;swingMonthFilter=\'\';swingYearFilter=\'\';renderSwings()" style="background:#1d4ed8;border:none;color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">Aplicar</button>'
+    +(isCustomActive?'<button onclick="swingCustomIni=\'\';swingCustomFim=\'\';renderSwings()" style="background:transparent;border:1px solid #1e3a6e;color:#94a3b8;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif">✕ Limpar</button>':'')
     +'</div>';
   var tierBtns='<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">'
     +'<button class="gbtn tier-btn '+(filterTier===''?'gbtn-active':'')+' " data-tier="" onclick="setTierAndRender(\'\',\'swings\')">Todos</button>'
@@ -1358,13 +1369,13 @@ function renderSwings(){
     +'</div>';
   ra.innerHTML=dateBar+tierBtns+biFilter;
   renderStats();
-  var recFilter=function(r){if(!r.data)return true;if(swingMonthFilter)return r.data.startsWith(swingMonthFilter);if(swingYearFilter)return r.data.startsWith(swingYearFilter);return true;};
+  var recFilter=function(r){if(!r.data)return true;if(swingCustomIni||swingCustomFim){var d=r.data;return(!swingCustomIni||d>=swingCustomIni)&&(!swingCustomFim||d<=swingCustomFim);}if(swingMonthFilter)return r.data.startsWith(swingMonthFilter);if(swingYearFilter)return r.data.startsWith(swingYearFilter);return true;};
   var withSwing=players.filter(function(p){return matchesTier(aggPlayer(p).grupo||p.grupo||'');}).map(function(p){
     var recs=(p.records||[]).filter(recFilter);
     var rawSw=recs.reduce(function(s,r){return s+(r.swing||0);},0);
     // Subtract baseline only when showing ALL records (no date filter)
     // When filtered by month/year, show raw swing for that period
-    var sw=(!swingMonthFilter&&!swingYearFilter)
+    var sw=(!swingMonthFilter&&!swingYearFilter&&!swingCustomIni&&!swingCustomFim)
       ? parseFloat((rawSw-(p.swingBaseline||0)).toFixed(1))
       : parseFloat(rawSw.toFixed(1));
     var a=aggPlayer(p,recFilter);
