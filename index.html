@@ -667,7 +667,7 @@ function loadCfg(){
   if(fbUrl&&$('fb-url'))$('fb-url').value=fbUrl;
   var ak=localStorage.getItem('hpt_ant')||'';if(ak&&$('ant-key'))$('ant-key').value=ak;
   var ld=JSON.parse(localStorage.getItem('hpt_dates')||'{}');var t=new Date().toISOString().slice(0,10);
-  if($('r-ini'))$('r-ini').value=ld.ini||t;if($('r-fim'))$('r-fim').value=ld.fim||t;
+  if($('rs-ini'))$('rs-ini').value=ld.ini||t;if($('rs-fim'))$('rs-fim').value=ld.fim||t;
 }
 function testConn(){
   saveCfg();
@@ -690,6 +690,16 @@ function testConn(){
 }
 
 function saveCfg(){fbUrl=($('fb-url')?.value||'').trim().replace(/\/+$/,'');localStorage.setItem('hpt_cfg',JSON.stringify({url:fbUrl}));}
+function saveCache(){
+  // Save only minimal player data to avoid quota errors
+  try{
+    var slim=players.map(function(p){return{id:p.id,nome:p.nome,nick:p.nick||'',grupo:p.grupo||'',reta:p.reta||'',mentor:p.mentor||'',inativo:p.inativo||false};});
+    localStorage.setItem('hpt_cache',JSON.stringify(slim));
+  }catch(e){
+    // Quota exceeded — clear cache entirely
+    try{localStorage.removeItem('hpt_cache');}catch(e2){}
+  }
+}
 
 // ── FIREBASE ──
 var fbBase=function(){return fbUrl+'/hpt_players';};
@@ -743,7 +753,7 @@ async function fetchData(){
     });
 
     // Step 5: save merged result
-    localStorage.setItem('hpt_cache',JSON.stringify(players));
+    saveCache();
     syncStatus('ok','Sincronizado — '+players.length+' jogadores');
     var sb=$('setup-box');if(sb)sb.style.display='none';var sm=$('setup-mini');if(sm)sm.style.display='';
 
@@ -757,7 +767,7 @@ async function pushPlayer(p){
   _savingUntil=Date.now()+15000;
   // Update local cache immediately
   var _ci=players.findIndex(function(x){return x.id===p.id;});if(_ci>=0)players[_ci]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   syncStatus('syncing','Salvando...');
   try{
     // PATCH: atualiza só os campos enviados, sem sobrescrever o que outro admin pode ter alterado
@@ -774,7 +784,7 @@ async function pushPlayer(p){
     if(p.records!==undefined){
       await fetch(fbBase()+'/'+p.id+'/records.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p.records||[])});
     }
-    localStorage.setItem('hpt_cache',JSON.stringify(players));
+    saveCache();
     _savingUntil=Date.now()+10000;
     syncStatus('ok','Salvo!');
   }catch(e){_savingUntil=0;syncStatus('err','Erro: '+e.message);}
@@ -801,7 +811,7 @@ function aggPlayer(p,filterFn){
   return{torneios,avb,profit_usd,swing:sw,data,grupo};
 }
 function currentSwing(p){var baseline=p.swingBaseline||0;var total=(p.records||[]).reduce(function(s,r){return s+(r.swing||0);},0);return parseFloat((total-baseline).toFixed(1));}
-async function doIntervencao(pid){var p=players.find(function(x){return x.id===pid;});if(!p)return;var total=(p.records||[]).reduce(function(s,r){return s+(r.swing||0);},0);p.swingBaseline=total;await pushPlayer(p);toast('Intervenção registrada!');renderTab();}
+async function doIntervencao(pid){if(!pid){toast('Erro','err');return;}var p=players.find(function(x){return x.id===pid;});if(!p)return;if(!confirm('Registrar intervencao para '+p.nome+'? O swing sera zerado agora.'))return;var total=(p.records||[]).reduce(function(s,r){return s+(r.swing||0);},0);p.swingBaseline=total;p.swingIntervencao=new Date().toISOString().slice(0,10);var _ci=players.findIndex(function(x){return x.id===pid;});if(_ci>=0)players[_ci]=p;saveCache();_savingUntil=Date.now()+30000;logHistory('intervencao',p.nome);toast('Intervencao registrada!');renderSwings();if(fbUrl){try{syncStatus('syncing','Salvando...');await fetch(fbBase()+'/'+pid+'/swingBaseline.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(total)});await fetch(fbBase()+'/'+pid+'/swingIntervencao.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p.swingIntervencao)});syncStatus('ok','Salvo!');}catch(e){syncStatus('err','Erro');}}_savingUntil=0;}
 
 // ── PERIODS ──
 function matchesPeriod(p){
@@ -1350,10 +1360,25 @@ function renderSwings(){
   renderStats();
   var recFilter=function(r){if(!r.data)return true;if(swingMonthFilter)return r.data.startsWith(swingMonthFilter);if(swingYearFilter)return r.data.startsWith(swingYearFilter);return true;};
   var withSwing=players.filter(function(p){return matchesTier(aggPlayer(p).grupo||p.grupo||'');}).map(function(p){
-    var recs=(p.records||[]).filter(recFilter);var sw=recs.reduce(function(s,r){return s+(r.swing||0);},0);var a=aggPlayer(p,recFilter);
-    return{p:p,sw:parseFloat(sw.toFixed(1)),a:a};
+    // Use swingBaseline like currentSwing() does - same logic that works in player panel
+    var recs=(p.records||[]).filter(recFilter);
+    var rawSw=recs.reduce(function(s,r){return s+(r.swing||0);},0);
+    var sw=parseFloat((rawSw-(p.swingBaseline||0)).toFixed(1));
+    var a=aggPlayer(p,recFilter);
+    return{p:p,sw:sw,a:a};
   });
-  var perdendo=withSwing.filter(function(x){return x.sw<=-swingMinLoss;}).sort(function(a,b){return a.sw-b.sw;});
+  // Exclude players who had an intervention (their swing resets from intervention date)
+  var today=new Date().toISOString().slice(0,10);
+  var perdendo=withSwing.filter(function(x){
+    if(x.sw>=-swingMinLoss)return false; // Not losing enough
+    if(x.p.swingIntervencao){
+      // Only show if they have records AFTER the intervention with negative swing
+      var postRecs=(x.p.records||[]).filter(function(r){return(r.data||'')>=x.p.swingIntervencao;});
+      var postSw=postRecs.reduce(function(s,r){return s+(r.swing||0);},0);
+      return postSw<=-swingMinLoss;
+    }
+    return true;
+  }).sort(function(a,b){return a.sw-b.sw;});
   var ganhando=withSwing.filter(function(x){return x.sw>=swingMinGain;}).sort(function(a,b){return b.sw-a.sw;});
   var card=function(x){var col=swingColor(x.sw);return'<div class="swing-card"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="pname">'+x.p.nome+'</div><div style="font-size:11px;color:#3a5a8a;margin-top:2px">'+(x.a.grupo||'—')+' · AVB US$ '+(x.a.avb?x.a.avb.toFixed(2):'—')+'</div><div style="font-size:11px;color:#4a90d9;margin-top:1px">'+fmtUSD(x.a.profit_usd)+'</div></div><div style="text-align:right"><div style="font-size:22px;font-family:Bebas Neue,monospace;color:'+col+';letter-spacing:1px">'+(x.sw>=0?'+':'')+x.sw.toFixed(1)+' bi</div><button data-pid="'+x.p.id+'" onclick="doIntervencao(this.dataset.pid)" class="btn-intervencao">⚡ intervenção</button></div></div></div>';};
   ra.innerHTML+=('<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div class="swing-header neg">↓ perdendo mais de 150 buy-ins</div>'+(perdendo.length?perdendo.map(card).join(''):'<div style="color:#3a5a8a;font-size:13px;padding:20px;text-align:center">Nenhum jogador nesta faixa</div>')+'</div><div><div class="swing-header pos">↑ ganhando mais de 300 buy-ins</div>'+(ganhando.length?ganhando.map(card).join(''):'<div style="color:#3a5a8a;font-size:13px;padding:20px;text-align:center">Nenhum jogador nesta faixa</div>')+'</div></div>');
@@ -1575,7 +1600,7 @@ async function editEstrategia(pid,idx){
   for(var k in stats){var cur=typeof stats[k]==='object'?stats[k].valor:stats[k];var val=prompt('Editar "'+k+'" (atual: '+cur+')',cur);if(val===null)return;newStats[k]=typeof stats[k]==='object'?{valor:isNaN(val)?val:parseFloat(val),alvo:stats[k].alvo}:( isNaN(val)?val:parseFloat(val));}
   p.estrategias[idx].stats=newStats;
   var pi=players.findIndex(function(x){return x.id===pid;});if(pi>=0)players[pi]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushEstrategias(p.id,p.estrategias);logHistory('stats_editado','Stats de '+p.nome+' ('+fmtMesLabel(p.estrategias[idx]?.data||'')+')');toast('Stats atualizadas!');renderStats_tab();
 }
 async function deleteEstrategia(pid,idx){
@@ -1584,7 +1609,7 @@ async function deleteEstrategia(pid,idx){
   if(!confirm('Apagar stats de '+mes+'?'))return;
   p.estrategias.splice(idx,1);
   // Atualiza cache local imediatamente antes de qualquer sync
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushEstrategias(p.id, p.estrategias);
   toast('Import apagado!','err');
   renderStats_tab();
@@ -1867,7 +1892,7 @@ function renderMergeModal(){
       +'<div style="max-height:340px;overflow-y:auto;background:#071220;border:1px solid #1e3a6e;border-radius:8px;padding:8px">'+playerBtns+'</div>'
       +keepSelect
       +(selected.length>=2
-        ?'<div style="margin-top:12px;display:flex;justify-content:flex-end"><button onclick="doManualMerge()" style="background:#1d4ed8;border:none;color:#fff;padding:9px 20px;border-radius:8px;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">🔀 Mesclar '+selected.length+' jogadores</button></div>'
+        ?'<div style="margin-top:12px;display:flex;justify-content:flex-end"><button onclick="doManualMergePlayers()" style="background:#1d4ed8;border:none;color:#fff;padding:9px 20px;border-radius:8px;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">🔀 Mesclar '+selected.length+' jogadores</button></div>'
         :'');
   }
 }
@@ -1881,6 +1906,29 @@ function toggleMergeSelect(id){
 }
 
 function closeMerge(){$('merge-modal').classList.remove('active');}
+async function doManualMergePlayers(){
+  var sel=window._mergeSelected||[];
+  var keepId=window._mergeKeep||sel[0];
+  if(sel.length<2){toast('Selecione ao menos 2 jogadores.','err');return;}
+  if(!keepId){toast('Selecione qual jogador manter.','err');return;}
+  var keep=players.find(function(x){return x.id===keepId;});
+  if(!keep){toast('Jogador principal não encontrado.','err');return;}
+  var toRemove=sel.filter(function(id){return id!==keepId;}).map(function(id){return players.find(function(x){return x.id===id;});}).filter(Boolean);
+  if(!confirm('Mesclar '+toRemove.map(function(p){return'"'+p.nome+'"';}).join(', ')+' em "'+keep.nome+'"?'))return;
+  toRemove.forEach(function(rem){
+    if(!keep.records)keep.records=[];keep.records=[...keep.records,...(rem.records||[])];
+    if(!keep.estrategias)keep.estrategias=[];keep.estrategias=[...keep.estrategias,...(rem.estrategias||[])];
+    if(!keep.nick&&rem.nick)keep.nick=rem.nick;
+    if(!keep.tel&&rem.tel)keep.tel=rem.tel;
+    players=players.filter(function(p){return p.id!==rem.id;});
+    deleteFromFb(rem.id);
+    logHistory('duplicado_mesclado','"'+rem.nome+'" → "'+keep.nome+'"');
+  });
+  await pushPlayer(keep);
+  window._mergeSelected=[];window._mergeKeep=null;
+  toast('✅ Jogadores mesclados!');
+  renderMergeModal();renderTab();
+}
 async function mergePlayers(gi,keepIdx,removeIdx){
   var dupes=findDuplicates();if(!dupes[gi])return;var group=dupes[gi];var keep=group[keepIdx];var remove=group[removeIdx];
   if(!confirm('Mesclar "'+remove.nome+'" em "'+keep.nome+'"?'))return;
@@ -1893,6 +1941,7 @@ async function mergePlayers(gi,keepIdx,removeIdx){
 
 // ── IMPORT RESULTADO ──
 var importOpen=false;
+var extData=[];
 document.addEventListener('paste',function(e){
   if(importOpen){var items=Array.from(e.clipboardData?.items||[]);var img=items.find(function(i){return i.type.startsWith('image/');});if(img){e.preventDefault();handleFile(img.getAsFile());}}
   else if(importStatsOpen){var items=Array.from(e.clipboardData?.items||[]);var img=items.find(function(i){return i.type.startsWith('image/');});if(img){e.preventDefault();handleFileStats(img.getAsFile());}}
@@ -2216,7 +2265,7 @@ async function deleteMonthRecord(pid, mes){
   });
   var pi=players.findIndex(function(x){return x.id===pid;});
   if(pi>=0)players[pi]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushPlayer(p);
   toast('Registros de '+mes+' apagados!','err');
   showDetail(pid);
@@ -2276,7 +2325,7 @@ async function deleteMentoria(pid,idx){
   p.mentorias.splice(idx,1);
   var pi=players.findIndex(function(x){return x.id===pid;});
   if(pi>=0)players[pi]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushPlayer(p);
   toast('Mentoria apagada!','err');
   showDetail(pid);
@@ -2352,7 +2401,7 @@ async function addHistoricoEntry(pid, texto){
   p.historico.push({tipo:'manual',texto:texto.trim(),data:new Date().toISOString().slice(0,10)});
   var pi=players.findIndex(function(x){return x.id===pid;});
   if(pi>=0)players[pi]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushPlayer(p);
   toast('Anotação salva!');
   openHistoricoModal(pid);
@@ -2363,7 +2412,7 @@ async function deleteHistoricoEntry(pid, idx){
   p.historico.splice(idx,1);
   var pi=players.findIndex(function(x){return x.id===pid;});
   if(pi>=0)players[pi]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushPlayer(p);
   openHistoricoModal(pid);
 }
@@ -2418,7 +2467,7 @@ async function editHistoricoEntry(pid, idx){
   if(novaData&&novaData.match(/^\d{4}-\d{2}-\d{2}$/))p.historico[idx].data=novaData;
   var pi=players.findIndex(function(x){return x.id===pid;});
   if(pi>=0)players[pi]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushPlayer(p);
   openHistoricoModal(pid);
 }
@@ -2431,7 +2480,7 @@ function syncUltimaMentoria(p){
     p.ultimaMentoria=lastDate;
     var pi=players.findIndex(function(x){return x.id===p.id;});
     if(pi>=0)players[pi]=p;
-    localStorage.setItem('hpt_cache',JSON.stringify(players));
+    saveCache();
     pushPlayer(p);
   }
 }
@@ -2520,7 +2569,7 @@ async function sairDoTime(pid){
   if(!p.historico)p.historico=[];
   p.historico.push({tipo:'outro',texto:'Saiu do time',data:p.dataSaida});
   var pi=players.findIndex(function(x){return x.id===pid;});if(pi>=0)players[pi]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushPlayer(p);
   logHistory('jogador_editado',p.nome+' — saiu do time');
   toast(p.nome+' marcado como inativo.');
@@ -2534,7 +2583,7 @@ async function reativarJogador(pid){
   if(!p.historico)p.historico=[];
   p.historico.push({tipo:'outro',texto:'Reativado no time',data:new Date().toISOString().slice(0,10)});
   var pi=players.findIndex(function(x){return x.id===pid;});if(pi>=0)players[pi]=p;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   await pushPlayer(p);
   toast(p.nome+' reativado!');
   showDetail(pid);
@@ -2604,12 +2653,16 @@ function generatePlayerLink(pid){
 }
 
 function doImport(){
-  var di=$('r-ini').value,df=$('r-fim').value;if(di)localStorage.setItem('hpt_dates',JSON.stringify({ini:di,fim:df}));
+  var di=$('rs-ini').value,df=$('rs-fim').value;if(di)localStorage.setItem('hpt_dates',JSON.stringify({ini:di,fim:df}));
   var added=0,updated=0,toSave=[];
   extData.forEach(function(p,i){
     if(document.getElementById('r'+i).classList.contains('skip'))return;
-    var nLow=normStr(p.nome||'');var knownGroups=['coaches','cavaleiros','cavaleiros do zodiaco','esquadrao','esquadrao suicida','super sayajins','the boys','vingadores','liga','liga da justica','power rangers','thundercats','x-men','xmen','guardioes','guardiao'];
+    var nLow=normStr(p.nome||'');
+    var knownGroups=['heroes','coaches','cavaleiros','cavaleiros do zodiaco','esquadrao','esquadrao suicida','super sayajins','the boys','vingadores','liga','liga da justica','liga da justiça','power rangers','thundercats','x-men','xmen','guardioes','guardiao','guardioes da galaxia','guardiões da galáxia'];
+    // Skip if name matches a known group name
     if(knownGroups.includes(nLow)||!p.nome||p.nome.trim().length<2)return;
+    // Skip if nome === grupo (header rows)
+    if(p.grupo&&normStr(p.grupo)===nLow)return;
     var prof=p.profit||0,avb=p.avb||0;var swing=avb>0?parseFloat((prof/avb).toFixed(1)):0;
     var dataStr=di||new Date().toISOString().slice(0,10);
     var record={data:dataStr,torneios:p.torneios||0,avb:avb,profit_usd:prof,swing:swing,grupo:p.grupo||''};
@@ -2678,7 +2731,7 @@ async function pushEstrategias(playerId, estrategias){
   if(p)p.estrategias=estrategias;
   else{console.warn('pushEstrategias: player not found',playerId);return;}
   _savingUntil=Date.now()+15000; // pausa sync por 15s durante o save
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   try{
     // PATCH only the estrategias field — avoids sending large records/foto
     var saved=await fetch(fbBase()+'/'+playerId+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estrategias:sanitizeEstrategias(estrategias)})});
@@ -2707,7 +2760,7 @@ async function fetchAllEstrategias(){
       // Normalize arrays
       if(p.estrategias&&!Array.isArray(p.estrategias))p.estrategias=Object.values(p.estrategias);
     });
-    localStorage.setItem('hpt_cache',JSON.stringify(players));
+    saveCache();
   }catch(e){console.error('fetchAllEstrategias error:',e);}
 }
 
@@ -2807,7 +2860,7 @@ async function doImportStats(){
   // Update in players array
   var pIdx=players.findIndex(function(x){return x.id===ex.id;});
   if(pIdx>=0)players[pIdx]=ex;
-  localStorage.setItem('hpt_cache',JSON.stringify(players));
+  saveCache();
   // Save estrategias to SEPARATE Firebase path (never overwritten by fetchData)
   await pushEstrategias(ex.id, ex.estrategias);
   closeImportStats();renderTab();
@@ -3079,7 +3132,7 @@ async function runMentoriaImport(){
   if(updated>0){
     var toSave=players.filter(function(p){return(p.mentorias||[]).length>0||p.ultimaMentoria;});
     for(var p of toSave)await pushPlayer(p);
-    localStorage.setItem('hpt_cache',JSON.stringify(players));
+    saveCache();
     localStorage.setItem('hpt_mentoria_import_v9','1');
     toast('Mentorias importadas!');
     renderTab();
@@ -3188,7 +3241,7 @@ async function runBaseMentoriaImport(){
   if(updated>0){
     var toSave=players.filter(function(p){return(p.mentorias||[]).length>0||p.ultimaMentoria;});
     for(var p of toSave)await pushPlayer(p);
-    localStorage.setItem('hpt_cache',JSON.stringify(players));
+    saveCache();
     localStorage.setItem('hpt_base_mentoria_v4','1');
     toast(updated+' jogadores da base com feedbacks importados!');
     renderTab();
