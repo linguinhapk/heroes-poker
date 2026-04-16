@@ -1360,10 +1360,13 @@ function renderSwings(){
   renderStats();
   var recFilter=function(r){if(!r.data)return true;if(swingMonthFilter)return r.data.startsWith(swingMonthFilter);if(swingYearFilter)return r.data.startsWith(swingYearFilter);return true;};
   var withSwing=players.filter(function(p){return matchesTier(aggPlayer(p).grupo||p.grupo||'');}).map(function(p){
-    // Use swingBaseline like currentSwing() does - same logic that works in player panel
     var recs=(p.records||[]).filter(recFilter);
     var rawSw=recs.reduce(function(s,r){return s+(r.swing||0);},0);
-    var sw=parseFloat((rawSw-(p.swingBaseline||0)).toFixed(1));
+    // Subtract baseline only when showing ALL records (no date filter)
+    // When filtered by month/year, show raw swing for that period
+    var sw=(!swingMonthFilter&&!swingYearFilter)
+      ? parseFloat((rawSw-(p.swingBaseline||0)).toFixed(1))
+      : parseFloat(rawSw.toFixed(1));
     var a=aggPlayer(p,recFilter);
     return{p:p,sw:sw,a:a};
   });
