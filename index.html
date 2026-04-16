@@ -1389,8 +1389,10 @@ function renderSwings(){
 
 
 // ── VOLUME ──
-function renderVolume(){
+async function renderVolume(){
   var ra=$('results-area');renderStats();
+  // Ensure metas are loaded
+  if(!playerMetas||Object.keys(playerMetas).length===0)await fetchMetas();
   var tierBtns='<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
     +'<button class="gbtn tier-btn '+(filterTier===''?'gbtn-active':'')+'" data-tier="" onclick="setTierAndRender(\'\',\'volume\')">Todos</button>'
     +'<button class="gbtn tier-btn '+(filterTier==='base'?'gbtn-active':'')+'" data-tier="base" onclick="setTierAndRender(\'base\',\'volume\')">🔵 Base</button>'
