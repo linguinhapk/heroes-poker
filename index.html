@@ -200,6 +200,7 @@ td{padding:8px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:m
   <button class="tab-btn" id="tab-mentorias" onclick="setTab('mentorias')">mentorias</button>
   <button class="tab-btn" id="tab-exjogadores" onclick="setTab('exjogadores')">ex-jogadores</button>
   <button class="tab-btn" id="tab-agenda" onclick="setTab('agenda')">📅 agenda</button>
+  <button class="tab-btn" id="tab-imports" onclick="setTab('imports')">📋 imports</button>
 </div>
 
 <div id="sg" class="stats-grid"></div>
@@ -706,6 +707,7 @@ function saveCache(){
 // ── FIREBASE ──
 var fbBase=function(){return fbUrl+'/hpt_players';};
 var fbAgenda=function(){return fbUrl+'/hpt_agenda';};
+var fbImports=function(){return fbUrl+'/hpt_imports';};
 var agendaItems=[];
 var editAulaId=null;
 var playerMetas={};
@@ -1922,6 +1924,25 @@ function toggleMergeSelect(id){
 }
 
 function closeMerge(){$('merge-modal').classList.remove('active');}
+function mergeRecords(keepRecs, removeRecs){
+  // Combine records from two players, keeping most recent per month
+  var combined=[...keepRecs];
+  removeRecs.forEach(function(r){
+    var mes=(r.data||'').slice(0,7);
+    var existing=combined.find(function(x){return(x.data||'').slice(0,7)===mes;});
+    if(!existing){
+      combined.push(r); // Month not in keep → add
+    } else {
+      // Keep the one with higher volume (more recent/complete import)
+      if((r.torneios||0)>(existing.torneios||0)){
+        var idx=combined.indexOf(existing);
+        combined[idx]=r;
+      }
+    }
+  });
+  return combined.sort(function(a,b){return(a.data||'')>(b.data||'')?1:-1;});
+}
+
 async function doManualMergePlayers(){
   var sel=window._mergeSelected||[];
   var keepId=window._mergeKeep||sel[0];
@@ -1932,7 +1953,7 @@ async function doManualMergePlayers(){
   var toRemove=sel.filter(function(id){return id!==keepId;}).map(function(id){return players.find(function(x){return x.id===id;});}).filter(Boolean);
   if(!confirm('Mesclar '+toRemove.map(function(p){return'"'+p.nome+'"';}).join(', ')+' em "'+keep.nome+'"?'))return;
   toRemove.forEach(function(rem){
-    if(!keep.records)keep.records=[];keep.records=[...keep.records,...(rem.records||[])];
+    if(!keep.records)keep.records=[];keep.records=mergeRecords(keep.records,rem.records||[]);
     if(!keep.estrategias)keep.estrategias=[];keep.estrategias=[...keep.estrategias,...(rem.estrategias||[])];
     if(!keep.nick&&rem.nick)keep.nick=rem.nick;
     if(!keep.tel&&rem.tel)keep.tel=rem.tel;
@@ -1948,7 +1969,7 @@ async function doManualMergePlayers(){
 async function mergePlayers(gi,keepIdx,removeIdx){
   var dupes=findDuplicates();if(!dupes[gi])return;var group=dupes[gi];var keep=group[keepIdx];var remove=group[removeIdx];
   if(!confirm('Mesclar "'+remove.nome+'" em "'+keep.nome+'"?'))return;
-  if(!keep.records)keep.records=[];keep.records=[...keep.records,...(remove.records||[])];
+  if(!keep.records)keep.records=[];keep.records=mergeRecords(keep.records,remove.records||[]);
   if(!keep.estrategias)keep.estrategias=[];keep.estrategias=[...keep.estrategias,...(remove.estrategias||[])];
   if(!keep.nick&&remove.nick)keep.nick=remove.nick;if(!keep.tel&&remove.tel)keep.tel=remove.tel;
   players=players.filter(function(p){return p.id!==remove.id;});
@@ -2670,6 +2691,7 @@ function generatePlayerLink(pid){
 
 function doImport(){
   var di=$('rs-ini').value,df=$('rs-fim').value;if(di)localStorage.setItem('hpt_dates',JSON.stringify({ini:di,fim:df}));
+  var importId='imp_'+Date.now();
   var added=0,updated=0,toSave=[];
   extData.forEach(function(p,i){
     if(document.getElementById('r'+i).classList.contains('skip'))return;
@@ -2685,7 +2707,7 @@ function doImport(){
     if(p.nome===p.nome.toUpperCase()&&p.nome.length>4&&(!p.grupo||normStr(p.grupo)===nLow))return;
     var prof=p.profit||0,avb=p.avb||0;var swing=avb>0?parseFloat((prof/avb).toFixed(1)):0;
     var dataStr=di||new Date().toISOString().slice(0,10);
-    var record={data:dataStr,torneios:p.torneios||0,avb:avb,profit_usd:prof,swing:swing,grupo:p.grupo||''};
+    var record={data:dataStr,fim:df||'',torneios:p.torneios||0,avb:avb,profit_usd:prof,swing:swing,grupo:p.grupo||'',importId:importId};
     var ex=players.find(function(x){return x.nome.toLowerCase()===p.nome.toLowerCase();});
     if(ex){
       if(!ex.records)ex.records=[];
@@ -2697,6 +2719,11 @@ function doImport(){
       toSave.push(ex);updated++;}
     else{var np={id:Date.now().toString()+Math.random().toString(36).slice(2),nome:p.nome,nick:'',grupo:p.grupo||'',tel:'',email:'',notas:'',records:[record],estrategias:[],swingBaseline:0};players.push(np);toSave.push(np);added++;}
   });
+  // Save import log
+  if(fbUrl&&(added+updated)>0){
+    var importLog={id:importId,ini:di,fim:df||'',data:new Date().toISOString().slice(0,10),hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),added:added,updated:updated,jogadores:toSave.map(function(p){return{id:p.id,nome:p.nome};})};
+    fetch(fbImports()+'/'+importId+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(importLog)}).catch(function(){});
+  }
   closeImport();renderTab();toast(added+' adicionados, '+updated+' atualizados');logHistory('record_importado',added+' novos, '+updated+' atualizados');toSave.forEach(function(p){pushPlayer(p);});
 }
 
@@ -3347,7 +3374,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
 function setTab(t){
   activeTab=t;
-  ['resultados','swings','volume','stats','mentorias','exjogadores','agenda'].forEach(function(tab){
+  ['resultados','swings','volume','stats','mentorias','exjogadores','agenda','imports'].forEach(function(tab){
     var btn=$('tab-'+tab);
     if(btn)btn.classList.toggle('active',tab===t);
   });
@@ -3408,6 +3435,7 @@ function renderTab(){
   else if(activeTab==='mentorias')renderMentoriasTab();
   else if(activeTab==='exjogadores')renderExJogadores();
   else if(activeTab==='agenda')renderAgenda();
+  else if(activeTab==='imports')renderImports();
 }
 
 
@@ -3512,6 +3540,160 @@ function adminLogout(){
 }
 
 
+
+
+// ── IMPORTS HISTORY ──
+var importLogs=[];
+var editImportId=null;
+var editImportData=[];
+
+async function fetchImports(){
+  if(!fbUrl)return;
+  try{
+    var r=await fetch(fbImports()+'.json');
+    if(!r.ok)return;
+    var d=await r.json();
+    importLogs=d&&typeof d==='object'?Object.values(d).filter(Boolean):[];
+    importLogs.sort(function(a,b){return(b.data||'')+(b.hora||'')>(a.data||'')+(a.hora||'')?1:-1;});
+  }catch(e){importLogs=[];}
+}
+
+async function renderImports(){
+  var ra=$('results-area');if(!ra)return;
+  ra.innerHTML='<div style="color:#3a5a8a;padding:20px;text-align:center">Carregando...</div>';
+  await fetchImports();
+  if(!importLogs.length){
+    ra.innerHTML='<div class="empty">📋<br>Nenhum import registrado ainda.<br><span style="font-size:11px;color:#3a5a8a">Os próximos imports serão registrados automaticamente.</span></div>';
+    return;
+  }
+  var html='<div style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin-bottom:16px">📋 Histórico de Imports de Resultados</div>';
+  importLogs.forEach(function(imp){
+    var periodo=imp.ini?(imp.ini.slice(8)+'/'+imp.ini.slice(5,7)+'/'+imp.ini.slice(0,4))+(imp.fim?' → '+imp.fim.slice(8)+'/'+imp.fim.slice(5,7)+'/'+imp.fim.slice(0,4):''):'—';
+    html+='<div style="background:#071220;border:1px solid #1e3a6e;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
+      +'<div style="flex:1">'
+        +'<div style="font-size:13px;font-weight:600;color:#e8f0fe;margin-bottom:4px">📅 '+periodo+'</div>'
+        +'<div style="font-size:11px;color:#3a5a8a;margin-bottom:6px">Importado em '+imp.data+' às '+imp.hora+' · '+((imp.added||0)+(imp.updated||0))+' jogadores</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +(imp.jogadores||[]).slice(0,8).map(function(j){return'<span style="background:#0d1e38;border:1px solid #1e3a6e;padding:2px 8px;border-radius:10px;font-size:10px;color:#60a5fa">'+j.nome+'</span>';}).join('')
+        +((imp.jogadores||[]).length>8?'<span style="font-size:10px;color:#3a5a8a">+'+((imp.jogadores||[]).length-8)+' mais</span>':'')
+        +'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'
+        +'<button data-id="'+imp.id+'" onclick="openEditImport(this.dataset.id)" style="background:#0d1e38;border:1px solid #1e3a6e;color:#60a5fa;padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">✏️ Editar</button>'
+        +'<button data-id="'+imp.id+'" onclick="if(confirm(&quot;Remover este import e os records associados?&quot;))deleteImport(this.dataset.id)" style="background:#1c0a0a;border:1px solid #450a0a;color:#f87171;padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">🗑</button>'
+      +'</div>'
+      +'</div></div>';
+  });
+  ra.innerHTML=html;
+}
+
+async function openEditImport(id){
+  var imp=importLogs.find(function(x){return x.id===id;});
+  if(!imp)return;
+  editImportId=id;
+  $('edit-import-title').textContent='Editar Import — '+imp.ini+(imp.fim?' → '+imp.fim:'');
+  var body=$('edit-import-body');
+  body.innerHTML='<div style="color:#3a5a8a;padding:20px;text-align:center">Carregando dados...</div>';
+  $('edit-import-modal').classList.add('active');
+  // Build editable rows for each player in this import
+  var rows=[];
+  (imp.jogadores||[]).forEach(function(j){
+    var p=players.find(function(x){return x.id===j.id;});
+    if(!p)return;
+    var rec=(p.records||[]).find(function(r){return r.importId===id||(r.data&&r.data===imp.ini);});
+    rows.push({player:p,rec:rec||null,jId:j.id});
+  });
+  editImportData=rows;
+  if(!rows.length){body.innerHTML='<div style="color:#3a5a8a;padding:20px;text-align:center">Nenhum dado encontrado para este import.</div>';return;}
+  var html='<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr>'
+    +'<th style="text-align:left;padding:8px 10px;font-size:10px;color:#4a90d9;text-transform:uppercase;background:#0d1e38">Nome (edite ou selecione)</th>'
+    +'<th style="padding:8px 10px;font-size:10px;color:#4a90d9;text-transform:uppercase;background:#0d1e38;text-align:center">Vol</th>'
+    +'<th style="padding:8px 10px;font-size:10px;color:#4a90d9;text-transform:uppercase;background:#0d1e38;text-align:center">AVB</th>'
+    +'<th style="padding:8px 10px;font-size:10px;color:#4a90d9;text-transform:uppercase;background:#0d1e38;text-align:right">Profit US$</th>'
+    +'</tr></thead><tbody>';
+  rows.forEach(function(row,i){
+    var r=row.rec;
+    // Build player dropdown options sorted by name
+    var playerOpts=players.slice().sort(function(a,b){return(a.nome||'')>(b.nome||'')?1:-1;}).map(function(pl){return'<option value="'+pl.id+'"'+(pl.id===row.player.id?' selected':'')+'>'+pl.nome+'</option>';}).join('');
+    html+='<tr style="border-top:1px solid #112040">'
+      +'<td style="padding:8px 10px">'
+        +'<input type="text" id="ei-nome-'+i+'" list="ei-nome-list-'+i+'" value="'+row.player.nome+'" style="width:180px;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:4px 8px;border-radius:5px;font-size:12px;outline:none;font-family:Inter,sans-serif" placeholder="Nome ou selecione...">'
+        +'<datalist id="ei-nome-list-'+i+'">'+players.slice().sort(function(a,b){return(a.nome||'')>(b.nome||'')?1:-1;}).map(function(pl){return'<option value="'+pl.nome+'"/>';}).join('')+'</datalist>'
+      +'</td>'
+      +'<td style="padding:8px 10px;text-align:center"><input type="number" id="ei-vol-'+i+'" value="'+(r?r.torneios||0:0)+'" style="width:70px;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:4px 6px;border-radius:5px;text-align:center;font-size:12px;outline:none"></td>'
+      +'<td style="padding:8px 10px;text-align:center"><input type="number" step="0.1" id="ei-avb-'+i+'" value="'+(r?r.avb||0:0)+'" style="width:70px;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:4px 6px;border-radius:5px;text-align:center;font-size:12px;outline:none"></td>'
+      +'<td style="padding:8px 10px;text-align:right"><input type="number" step="0.01" id="ei-profit-'+i+'" value="'+(r?r.profit_usd||0:0)+'" style="width:90px;background:#071220;border:1px solid #1e3a6e;color:#e8f0fe;padding:4px 6px;border-radius:5px;text-align:right;font-size:12px;outline:none"></td>'
+      +'</tr>';
+  });
+  html+='</tbody></table>';
+  body.innerHTML=html;
+}
+
+function closeEditImport(){$('edit-import-modal').classList.remove('active');editImportId=null;editImportData=[];}
+
+async function saveEditImport(){
+  if(!editImportId||!editImportData.length)return;
+  var toSave=[];
+  editImportData.forEach(function(row,i){
+    var p=row.player;
+    if(!p||!row.rec)return;
+    var vol=parseFloat(document.getElementById('ei-vol-'+i).value)||0;
+    var avb=parseFloat(document.getElementById('ei-avb-'+i).value)||0;
+    var profit=parseFloat(document.getElementById('ei-profit-'+i).value)||0;
+    var swing=avb>0?parseFloat((profit/avb).toFixed(1)):0;
+    // Handle name change — match to existing player or rename
+    var novoNome=(document.getElementById('ei-nome-'+i).value||'').trim();
+    if(novoNome&&novoNome!==p.nome){
+      var match=players.find(function(x){return x.nome.toLowerCase()===novoNome.toLowerCase()&&x.id!==p.id;});
+      if(match){
+        // Merge record into existing player
+        if(!match.records)match.records=[];
+        match.records=match.records.filter(function(r){return r.importId!==editImportId;});
+        match.records.push(row.rec);
+        toSave.push(match);
+        // Remove record from original player
+        p.records=(p.records||[]).filter(function(r){return r!==row.rec;});
+        if(toSave.indexOf(p)<0)toSave.push(p);
+        row.rec.torneios=vol;row.rec.avb=avb;row.rec.profit_usd=profit;row.rec.swing=swing;
+        return;
+      } else {
+        p.nome=novoNome;// Rename player
+      }
+    }
+    row.rec.torneios=vol;row.rec.avb=avb;row.rec.profit_usd=profit;row.rec.swing=swing;
+    toSave.push(p);
+  });
+  syncStatus('syncing','Salvando...');
+  for(var p of toSave)await pushPlayer(p);
+  syncStatus('ok','Salvo!');
+  closeEditImport();
+  renderTab();
+  toast('✅ Import atualizado!');
+}
+
+async function deleteImport(id){
+  var imp=importLogs.find(function(x){return x.id===id;});
+  if(!imp)return;
+  // Remove records tagged with this importId from all players
+  var toSave=[];
+  (imp.jogadores||[]).forEach(function(j){
+    var p=players.find(function(x){return x.id===j.id;});
+    if(!p)return;
+    var before=p.records.length;
+    p.records=(p.records||[]).filter(function(r){return r.importId!==id;});
+    if(p.records.length!==before)toSave.push(p);
+  });
+  // Delete from Firebase
+  if(fbUrl){
+    try{await fetch(fbImports()+'/'+id+'.json',{method:'DELETE'});}catch(e){}
+    for(var p of toSave)await pushPlayer(p);
+  }
+  importLogs=importLogs.filter(function(x){return x.id!==id;});
+  toast('Import removido!');
+  renderImports();
+}
 
 // ── AGENDA ──
 async function fetchMetas(){
@@ -3684,6 +3866,14 @@ async function renderAgenda(){
 </script>
 
 
+<!-- ── EDIT IMPORT MODAL ── -->
+<div class="overlay" id="edit-import-modal">
+  <div class="modal" style="max-width:680px">
+    <div class="mh"><h2 id="edit-import-title">Editar Import</h2><button class="xbtn" onclick="closeEditImport()">✕</button></div>
+    <div class="mb" id="edit-import-body" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="mf"><button class="btn btn-ghost" onclick="closeEditImport()">Cancelar</button><button class="btn btn-primary" onclick="saveEditImport()">💾 Salvar alterações</button></div>
+  </div>
+</div>
 <!-- ── AGENDA MODAL ── -->
 <div class="overlay" id="aula-modal">
   <div class="modal" style="max-width:480px">
