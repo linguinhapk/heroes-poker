@@ -2683,7 +2683,14 @@ function doImport(){
     var dataStr=di||new Date().toISOString().slice(0,10);
     var record={data:dataStr,torneios:p.torneios||0,avb:avb,profit_usd:prof,swing:swing,grupo:p.grupo||''};
     var ex=players.find(function(x){return x.nome.toLowerCase()===p.nome.toLowerCase();});
-    if(ex){if(!ex.records)ex.records=[];ex.records.push(record);if(p.grupo&&!ex.grupo)ex.grupo=p.grupo;toSave.push(ex);updated++;}
+    if(ex){
+      if(!ex.records)ex.records=[];
+      // Replace any existing record from the same month (same mês prefix)
+      var mesPref=dataStr.slice(0,7);
+      ex.records=ex.records.filter(function(r){return!r.data||r.data.slice(0,7)!==mesPref;});
+      ex.records.push(record);
+      if(p.grupo&&!ex.grupo)ex.grupo=p.grupo;
+      toSave.push(ex);updated++;}
     else{var np={id:Date.now().toString()+Math.random().toString(36).slice(2),nome:p.nome,nick:'',grupo:p.grupo||'',tel:'',email:'',notas:'',records:[record],estrategias:[],swingBaseline:0};players.push(np);toSave.push(np);added++;}
   });
   closeImport();renderTab();toast(added+' adicionados, '+updated+' atualizados');logHistory('record_importado',added+' novos, '+updated+' atualizados');toSave.forEach(function(p){pushPlayer(p);});
