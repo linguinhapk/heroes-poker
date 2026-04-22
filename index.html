@@ -2674,11 +2674,15 @@ function doImport(){
   extData.forEach(function(p,i){
     if(document.getElementById('r'+i).classList.contains('skip'))return;
     var nLow=normStr(p.nome||'');
-    var knownGroups=['heroes','coaches','cavaleiros','cavaleiros do zodiaco','esquadrao','esquadrao suicida','super sayajins','the boys','vingadores','liga','liga da justica','liga da justiça','power rangers','thundercats','x-men','xmen','guardioes','guardiao','guardioes da galaxia','guardiões da galáxia'];
+    var knownGroups=['heroes','coaches','cavaleiros','cavaleiros do zodiaco','esquadrao','esquadrao suicida','super sayajins','the boys','vingadores','liga','liga da justica','liga da justica','power rangers','thundercats','x-men','xmen','guardioes','guardiao','guardioes da galaxia','super sayajins','thundercats','x men','guardioes da galaxia'];
+    // Normalize knownGroups for comparison (remove accents)
+    var isGroup=knownGroups.some(function(g){return normStr(g)===nLow;});
     // Skip if name matches a known group name
-    if(knownGroups.includes(nLow)||!p.nome||p.nome.trim().length<2)return;
+    if(isGroup||!p.nome||p.nome.trim().length<2)return;
     // Skip if nome === grupo (header rows)
     if(p.grupo&&normStr(p.grupo)===nLow)return;
+    // Skip if nome contains only uppercase words and matches group pattern (e.g. "LIGA DA JUSTICA")
+    if(p.nome===p.nome.toUpperCase()&&p.nome.length>4&&(!p.grupo||normStr(p.grupo)===nLow))return;
     var prof=p.profit||0,avb=p.avb||0;var swing=avb>0?parseFloat((prof/avb).toFixed(1)):0;
     var dataStr=di||new Date().toISOString().slice(0,10);
     var record={data:dataStr,torneios:p.torneios||0,avb:avb,profit_usd:prof,swing:swing,grupo:p.grupo||''};
