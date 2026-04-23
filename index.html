@@ -2685,8 +2685,11 @@ function renderMentoriasTab(){
     +'</tr>';
   }).join('');
 
-  ra.innerHTML='<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+  ra.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">'
     +'<div style="font-size:13px;color:#94a3b8"><span style="color:#f87171;font-weight:600">'+lista.length+'</span> jogadores precisam de mentoria</div>'
+    +'<button class="btn btn-ghost btn-sm" onclick="openCicloReview()" style="background:#140a2e;color:#c4b5fd;border-color:#4c1d95">🎓 Ciclo — selecionar jogadores</button>'
+    +'</div>'
+    +'<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
       +'<span style="font-size:11px;color:#f87171;padding:2px 10px;border-radius:10px;border:1px solid #f8717144;background:#f8717111">🔴 Crítico +90 dias</span>'
       +'<span style="font-size:11px;color:#f97316;padding:2px 10px;border-radius:10px;border:1px solid #f9731644;background:#f9731611">🟠 Urgente 76-90 dias</span>'
@@ -3440,6 +3443,59 @@ async function runBaseMentoriaImport(){
   }
 }
 
+// ── CICLO DE MENTORIA — Update apenas ultimaMentoria (roda uma vez) ──
+// Dados da planilha "Avaliação Ciclo Mentoria" (col B=jogador, col D=data última mentoria)
+// Apenas os 16 jogadores com nome completo identificado são incluídos.
+// Nome canônico como chave → data ISO da última mentoria.
+var CICLO_DATA_UPDATE = {
+  "andre luan de lima oliveira":       "2026-02-24", // André Oliveira
+  "eduardo latauczeski":               "2026-04-09", // Edu
+  "ronie caires lima santos":          "2026-04-11", // Ronie (planilha tinha typo 2024)
+  "carlos henrique mendonca alvim bello": "2026-02-21", // Alvim
+  "frederico ferreira barros":         "2026-04-09", // Fred
+  "rodrigo silva de freitas mariano":  "2026-04-09", // Mariano
+  "maycow fernandes pereira":          "2026-04-09", // Maycow
+  "bernardo catelan marques":          "2026-04-17", // Bernardo Catelan
+  "weverton martins":                  "2026-04-16", // Weverton Martins
+  "andrey pontes de brito":            "2026-04-15", // Andrey Pontes
+  "guilherme morgenstern":             "2026-04-13", // Morgenstern
+  "henrique nogueira de oliveira":     "2026-04-20", // Henrique Nogueira
+  "jaison ribeiro dos santos":         "2026-04-07"  // Jaison
+};
+
+async function runCicloDataUpdate(){
+  if(!players.length){setTimeout(runCicloDataUpdate,1500);return;}
+  if(localStorage.getItem('hpt_ciclo_data_v1'))return;
+  function n(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');}
+  var updated=0;
+  for(var p of players){
+    var k=n(p.nome);
+    var newDate=CICLO_DATA_UPDATE[k];
+    if(!newDate) continue;
+    // Only update if newer than current ultimaMentoria
+    if(p.ultimaMentoria && p.ultimaMentoria >= newDate) continue;
+    p.ultimaMentoria=newDate;
+    var pi=players.findIndex(function(x){return x.id===p.id;});
+    if(pi>=0)players[pi]=p;
+    if(fbUrl){
+      try{
+        await fetch(fbBase()+'/'+p.id+'/ultimaMentoria.json',{
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(newDate)
+        });
+      }catch(e){console.error('Erro ao atualizar '+p.nome+':',e);}
+    }
+    updated++;
+  }
+  localStorage.setItem('hpt_ciclo_data_v1','1');
+  if(updated>0){
+    saveCache();
+    toast(updated+' jogador(es) com data atualizada via Ciclo');
+    renderTab();
+  }
+}
+
 // ── FORCE SYNC ESTRATEGIAS TO FIREBASE ──
 async function forceSyncAllEstrategias(){
   if(!fbUrl)return;
@@ -3849,33 +3905,23 @@ async function importSelectedFromSheet(){
 // ── CICLO DE MENTORIA — Atualização de datas ──
 // Dados fixos extraídos da planilha "Avaliação Ciclo Mentoria" (21-23/04/2026)
 // Só atualiza `ultimaMentoria` do jogador — não salva feedback.
+// Lista de jogadores da planilha "Avaliação Ciclo Mentoria" cujos nomes completos
+// NÃO conseguimos identificar automaticamente. Os 13 conhecidos já são atualizados
+// silenciosamente pelo runCicloDataUpdate().
 var CICLO_ULT_MENTORIA = [
   // { nomeForm: nome como está na planilha, data: data ISO da última mentoria (col D) }
-  { nomeForm: 'André Oliveira',        data: '2026-02-24' },
-  { nomeForm: 'Edu',                   data: '2026-04-09' },
-  { nomeForm: 'Ronie',                 data: '2026-04-11' },
-  { nomeForm: 'Alvim',                 data: '2026-02-21' },
   { nomeForm: 'Bruno FIllipy',         data: '' },
-  { nomeForm: 'Fred',                  data: '2026-04-09' },
   { nomeForm: 'Vitor Natã',            data: '' },
   { nomeForm: 'david sella',           data: '' },
-  { nomeForm: 'Mariano',               data: '2026-04-09' },
   { nomeForm: 'Fabricio Arli',         data: '2026-02-11' },
   { nomeForm: 'Márcio Campos',         data: '2026-02-06' },
-  { nomeForm: 'Maycow',                data: '2026-04-09' },
-  { nomeForm: 'Bernardo Catelan',      data: '2026-04-17' },
   { nomeForm: 'Vinícius Galuppo',      data: '' },
-  { nomeForm: 'Weverton Martins',      data: '2026-04-16' },
-  { nomeForm: 'Andrey Pontes',         data: '2026-04-15' },
-  { nomeForm: 'Guilherme Morgenstern', data: '2026-04-13' },
-  { nomeForm: 'Henrique Nogueira',     data: '2026-04-20' },
-  { nomeForm: 'Jaison',                data: '2026-04-07' },
   { nomeForm: 'Ricardo Yai',           data: '2026-04-14' },
   { nomeForm: 'Gabriel SMR',           data: '2026-04-13' },
   { nomeForm: 'Willian Bonatto',       data: '2026-04-15' },
   { nomeForm: 'João Boechadt',         data: '2026-04-15' },
   { nomeForm: 'Willian Cestari',       data: '2026-04-16' },
-  { nomeForm: 'Fernando Indio',        data: '' }, // data "06/02/2024" parece typo; deixei vazio
+  { nomeForm: 'Fernando Indio',        data: '' }, // data "06/02/2024" parece typo
   { nomeForm: 'Caique Abeldt',         data: '' },
   { nomeForm: 'Bruno Martinelli',      data: '2026-04-20' },
   { nomeForm: 'Nathan Doarte',         data: '2026-02-20' },
@@ -3920,9 +3966,9 @@ function openCicloReview(){
   var unmatchedCount = items.filter(function(it){return !it.match.player;}).length;
 
   var html = '<div style="font-size:12px;color:#94a3b8;margin-bottom:14px;padding:10px 12px;background:#071220;border:1px solid #112040;border-radius:8px;line-height:1.5">'
-    +'<div style="font-weight:600;color:#c4b5fd;margin-bottom:4px">🔄 Avaliação de Ciclo de Mentoria</div>'
-    +'<div><span style="color:#34d399;font-weight:700">'+items.length+'</span> jogador(es) da planilha. '
-    +'Vou apenas atualizar a <b style="color:#93c5fd">data da última mentoria</b> — nenhum feedback será salvo.</div>'
+    +'<div style="font-weight:600;color:#c4b5fd;margin-bottom:4px">🎓 Ciclo — Selecionar Jogadores</div>'
+    +'<div><span style="color:#34d399;font-weight:700">'+items.length+'</span> jogador(es) cujos nomes completos ainda não foram identificados. '
+    +'Selecione o jogador correto no dropdown. Vou apenas atualizar a <b style="color:#93c5fd">data da última mentoria</b> — nenhum feedback será salvo.</div>'
     +(unmatchedCount>0
       ?'<div style="margin-top:6px;font-size:11px;color:#fbbf24">⚠️ '+unmatchedCount+' sem match automático — selecione ou pule</div>'
       :'<div style="margin-top:6px;font-size:11px;color:#34d399">✓ Todos com jogador detectado</div>')
@@ -4072,7 +4118,8 @@ window.addEventListener('DOMContentLoaded',function(){
   renderTab();
   if(fbUrl)fetchData();else{syncStatus('warn','Configure o Firebase acima');}setTimeout(runRetaImport,2000);
   setTimeout(runMentoriaImport,3000);
-  setTimeout(runBaseMentoriaImport,4000);(function(){
+  setTimeout(runBaseMentoriaImport,4000);
+  setTimeout(runCicloDataUpdate,5000);(function(){
   var SYNC_INTERVAL = 120000; // 2 minutos
   var _lastSync = 0;
   var _userActive = false;
