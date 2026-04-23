@@ -2549,7 +2549,11 @@ function renderMentoriasTab(){
   });
 
   if(!lista.length){
-    ra.innerHTML='<div class="tw"><div class="empty" style="padding:40px 0">'
+    ra.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'
+      +'<div style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:2px;font-weight:600">🎯 Mentorias</div>'
+      +'<button class="btn btn-import btn-sm" onclick="openSheetSync()">🔄 Sincronizar Planilha</button>'
+      +'</div>'
+      +'<div class="tw"><div class="empty" style="padding:40px 0">'
       +'<div style="font-size:36px;margin-bottom:10px">✅</div>'
       +'<p style="font-size:14px;color:#34d399">Todos os jogadores tiveram mentoria nos últimos 90 dias!</p>'
       +'</div></div>';
@@ -2579,7 +2583,11 @@ function renderMentoriasTab(){
     +'</tr>';
   }).join('');
 
-  ra.innerHTML='<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+  ra.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">'
+    +'<div style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:2px;font-weight:600">🎯 Mentorias</div>'
+    +'<button class="btn btn-import btn-sm" onclick="openSheetSync()">🔄 Sincronizar Planilha</button>'
+    +'</div>'
+    +'<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
     +'<div style="font-size:13px;color:#94a3b8"><span style="color:#f87171;font-weight:600">'+lista.length+'</span> jogadores precisam de mentoria</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
       +'<span style="font-size:11px;color:#f87171;padding:2px 10px;border-radius:10px;border:1px solid #f8717144;background:#f8717111">🔴 Crítico +90 dias</span>'
@@ -3337,6 +3345,389 @@ async function forceSyncAllEstrategias(){
   }
   if(count>0){console.log('Estrategias sincronizadas: '+count+' jogadores');toast(count+' jogadores com stats sincronizados!');}
 }
+
+// ── SHEET MENTORIA SYNC ──
+var SHEET_MENTORIA_URL_DEFAULT = 'https://docs.google.com/spreadsheets/d/1G_Tcn8tfc1zEnJvFxOuCAuGhRDi-JkCab_lJa_MGnQU/export?format=csv&gid=354268055';
+
+function getSheetUrl(){
+  return localStorage.getItem('hpt_sheet_url') || SHEET_MENTORIA_URL_DEFAULT;
+}
+function setSheetUrl(url){
+  localStorage.setItem('hpt_sheet_url', (url||'').trim());
+}
+
+// RFC4180-ish CSV parser (handles quoted fields, escaped quotes, newlines inside quotes)
+function parseCSV(text){
+  var rows=[], row=[], field='', inQ=false, i=0, L=text.length;
+  while(i<L){
+    var c=text.charAt(i);
+    if(inQ){
+      if(c==='"'){
+        if(text.charAt(i+1)==='"'){ field+='"'; i+=2; continue; }
+        inQ=false; i++; continue;
+      }
+      field+=c; i++; continue;
+    }
+    if(c==='"'){ inQ=true; i++; continue; }
+    if(c===','){ row.push(field); field=''; i++; continue; }
+    if(c==='\r'){ i++; continue; }
+    if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; i++; continue; }
+    field+=c; i++;
+  }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+// Convert "19/02/2026" or "19/02/2026 14:30:00" to "2026-02-19"
+function sheetDateToISO(s){
+  if(!s) return '';
+  s = String(s).trim();
+  // Already ISO?
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(!m) return '';
+  return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+}
+
+function normN(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');
+}
+
+// Nickname mapping: normalized-sheet-name → player.id
+function getNicknameMap(){
+  try { return JSON.parse(localStorage.getItem('hpt_nickname_map')||'{}'); } catch(e) { return {}; }
+}
+function saveNicknameMap(m){
+  localStorage.setItem('hpt_nickname_map', JSON.stringify(m||{}));
+}
+
+// Try to match a sheet player name to an app player
+function matchSheetPlayer(sheetName){
+  if(!sheetName) return { player:null, confidence:'none' };
+  var n = normN(sheetName);
+  var nickMap = getNicknameMap();
+  // 1. Previously saved mapping (user confirmed before)
+  if(nickMap[n]){
+    var p1 = players.find(function(x){return x.id===nickMap[n];});
+    if(p1) return { player:p1, confidence:'saved' };
+  }
+  // 2. Exact match against full name
+  var p = players.find(function(x){return normN(x.nome)===n;});
+  if(p) return { player:p, confidence:'exact' };
+  // 3. Match against nick field
+  p = players.find(function(x){return x.nick && normN(x.nick)===n;});
+  if(p) return { player:p, confidence:'nick' };
+  // 4. Sheet name is a substring of the full name
+  p = players.find(function(x){var fn=normN(x.nome); return fn.indexOf(n)>=0 || n.indexOf(fn)>=0;});
+  if(p) return { player:p, confidence:'partial' };
+  // 5. All ≥3-char tokens of sheet name appear in full name
+  var tokens = n.split(' ').filter(function(t){return t.length>=3;});
+  if(tokens.length){
+    p = players.find(function(x){
+      var fn = normN(x.nome);
+      return tokens.every(function(t){return fn.indexOf(t)>=0;});
+    });
+    if(p) return { player:p, confidence:'tokens' };
+  }
+  return { player:null, confidence:'none' };
+}
+
+// Convert a sheet row (from parseCSV) into a mentoria object
+// Column order from the form: [0]timestamp [1]jogador [2]mentor [3]data
+// [4]atividade [5]subida [6]stats [7]mindset [8]evolucao [9]demanda
+// [10]resumo [11]campoLivre [12]investiria
+function rowToMentoria(row){
+  function pn(s){var n=parseInt(s,10); return isNaN(n)?null:n;}
+  return {
+    data: sheetDateToISO(row[3]),
+    mentor: (row[2]||'').trim(),
+    atividade: pn(row[4]),
+    subida: pn(row[5]),
+    stats: pn(row[6]),
+    mindset: pn(row[7]),
+    investiria: pn(row[12]),
+    evolucao: (row[8]||'').trim(),
+    demanda: (row[9]||'').trim(),
+    resumo: (row[10]||'').trim(),
+    campoLivre: (row[11]||'').trim()
+  };
+}
+
+// Is this mentoria already in the app (for any player)?
+function isMentoriaDuplicate(newM){
+  return players.some(function(p){
+    return (p.mentorias||[]).some(function(m){
+      return m.data===newM.data && normN(m.mentor||'')===normN(newM.mentor||'');
+    });
+  });
+}
+
+async function openSheetSync(){
+  var modal = $('sheet-sync-modal');
+  if(!modal) return;
+  modal.classList.add('active');
+  var body = $('sheet-sync-body');
+  var footer = $('sheet-sync-footer');
+  body.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#60a5fa">'
+    +'<div style="font-size:28px;margin-bottom:10px">⏳</div>'
+    +'<div style="font-size:14px">Buscando respostas da planilha...</div>'
+    +'<div style="font-size:11px;color:#3a5a8a;margin-top:8px">Isso pode demorar alguns segundos</div>'
+    +'</div>';
+  footer.innerHTML = '<button class="btn btn-ghost" onclick="closeSheetSync()">Cancelar</button>';
+
+  try {
+    var url = getSheetUrl();
+    var r = await fetch(url, { method:'GET', redirect:'follow' });
+    if(!r.ok) throw new Error('HTTP '+r.status+' — verifique se a planilha está pública');
+    var text = await r.text();
+    if(!text || text.length < 10) throw new Error('Planilha vazia');
+    if(text.indexOf('<html') >= 0) throw new Error('Recebi HTML em vez de CSV. A planilha precisa estar compartilhada como "Qualquer pessoa com o link pode ver".');
+
+    var rows = parseCSV(text);
+    if(rows.length < 2){ throw new Error('Planilha sem dados'); }
+
+    // Skip header row; filter out rows without jogador or data
+    var dataRows = rows.slice(1).filter(function(r){
+      return r && r[1] && r[1].trim() && r[3] && r[3].trim();
+    });
+
+    var newItems = [];
+    var alreadyImported = 0;
+    dataRows.forEach(function(row){
+      var m = rowToMentoria(row);
+      if(!m.data || !m.mentor) return;
+      if(isMentoriaDuplicate(m)){ alreadyImported++; return; }
+      var sheetName = (row[1]||'').trim();
+      var match = matchSheetPlayer(sheetName);
+      newItems.push({ sheetName: sheetName, mentoria: m, match: match });
+    });
+
+    renderSheetSyncReview(newItems, alreadyImported, dataRows.length);
+  } catch(e) {
+    body.innerHTML = '<div style="color:#f87171;padding:20px;text-align:center">'
+      +'<div style="font-size:28px;margin-bottom:10px">⚠️</div>'
+      +'<div style="font-weight:600;margin-bottom:8px">Erro ao buscar planilha</div>'
+      +'<div style="font-size:12px;color:#fca5a5;margin-bottom:14px">'+(e.message||e)+'</div>'
+      +'<div style="font-size:11px;color:#94a3b8;background:#071220;border:1px solid #112040;border-radius:8px;padding:12px;text-align:left;line-height:1.6">'
+        +'<b style="color:#60a5fa">Como resolver:</b><br>'
+        +'1. Abra a planilha<br>'
+        +'2. Clique em <b>Compartilhar</b> (canto superior direito)<br>'
+        +'3. Em "Acesso geral", selecione <b>Qualquer pessoa com o link</b><br>'
+        +'4. Role <b>Leitor</b><br>'
+        +'5. Tente sincronizar de novo'
+      +'</div>'
+      +'<div style="font-size:10px;color:#3a5a8a;margin-top:14px;word-break:break-all">URL atual:<br>'+getSheetUrl()+'</div>'
+      +'<button class="btn btn-ghost btn-sm" onclick="openSheetSyncConfig()" style="margin-top:10px">⚙️ Trocar URL</button>'
+      +'</div>';
+    footer.innerHTML = '<button class="btn btn-ghost" onclick="closeSheetSync()">Fechar</button>'
+      +'<button class="btn btn-primary" onclick="openSheetSync()">🔄 Tentar de novo</button>';
+  }
+}
+
+function openSheetSyncConfig(){
+  var novaUrl = prompt('URL de exportação CSV da planilha:\n\n(Formato: https://docs.google.com/spreadsheets/d/<ID>/export?format=csv&gid=<GID>)', getSheetUrl());
+  if(novaUrl!==null){
+    setSheetUrl(novaUrl);
+    openSheetSync();
+  }
+}
+
+function renderSheetSyncReview(items, alreadyImported, totalRows){
+  var body = $('sheet-sync-body');
+  var footer = $('sheet-sync-footer');
+
+  if(!items.length){
+    body.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+      +'<div style="font-size:36px;margin-bottom:10px">✅</div>'
+      +'<div style="font-size:15px;color:#34d399;font-weight:600">Tudo em dia!</div>'
+      +'<div style="font-size:12px;color:#94a3b8;margin-top:8px">'
+        +'Nenhuma mentoria nova encontrada.<br>'
+        +'<span style="color:#3a5a8a">'+alreadyImported+' de '+totalRows+' já estão importadas no app.</span>'
+      +'</div>'
+      +'<button class="btn btn-ghost btn-sm" onclick="openSheetSyncConfig()" style="margin-top:20px">⚙️ Trocar URL da planilha</button>'
+      +'</div>';
+    footer.innerHTML = '<button class="btn btn-primary" onclick="closeSheetSync()">Fechar</button>';
+    return;
+  }
+
+  // Store items globally for access on confirm
+  window._sheetSyncItems = items;
+
+  // Build shared <option> list for player dropdowns
+  var playersSorted = players.slice().filter(function(p){return p && p.nome;}).sort(function(a,b){return(a.nome||'').localeCompare(b.nome||'');});
+  var baseOpts = '<option value="">— Não importar —</option>' + playersSorted.map(function(p){
+    return '<option value="'+p.id+'">'+p.nome+(p.nick?' (@'+p.nick+')':'')+'</option>';
+  }).join('');
+
+  var unmatchedCount = items.filter(function(it){return !it.match.player;}).length;
+
+  var html = '<div style="font-size:12px;color:#94a3b8;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px;background:#071220;border:1px solid #112040;border-radius:8px">'
+    +'<div><span style="color:#34d399;font-weight:700;font-size:14px">'+items.length+'</span> nova(s) mentoria(s) encontrada(s)'
+      +(alreadyImported>0?' <span style="color:#3a5a8a;font-size:11px">('+alreadyImported+' já no app)</span>':'')
+    +'</div>'
+    +(unmatchedCount>0
+      ?'<div style="font-size:11px;color:#fbbf24;background:#451a03;border:1px solid #78350f;padding:3px 10px;border-radius:10px">⚠️ '+unmatchedCount+' sem jogador — escolha manualmente</div>'
+      :'<div style="font-size:11px;color:#34d399">✓ Todos com jogador detectado</div>')
+    +'</div>';
+
+  items.forEach(function(item, idx){
+    var m = item.mentoria;
+    var match = item.match;
+    var conf = match.confidence;
+    var confMeta = {
+      exact:   { color:'#34d399', label:'✓ Nome exato' },
+      saved:   { color:'#34d399', label:'✓ Mapeado antes' },
+      nick:    { color:'#60a5fa', label:'✓ Por apelido' },
+      partial: { color:'#fbbf24', label:'⚠ Parcial' },
+      tokens:  { color:'#fbbf24', label:'⚠ Por palavras' },
+      none:    { color:'#f87171', label:'❌ Não encontrado' }
+    }[conf] || { color:'#94a3b8', label:conf };
+    var dateFmt = m.data && m.data.length>=10 ? m.data.slice(8,10)+'/'+m.data.slice(5,7)+'/'+m.data.slice(0,4) : m.data;
+    var needsAttention = conf==='none' || conf==='tokens' || conf==='partial';
+    var borderColor = conf==='none'?'#7f1d1d':(needsAttention?'#78350f':'#1e3a6e');
+
+    // Build options with the matched player pre-selected
+    var optsHtml;
+    if(match.player){
+      optsHtml = baseOpts.replace('value="'+match.player.id+'"', 'value="'+match.player.id+'" selected');
+    } else {
+      optsHtml = baseOpts.replace('value=""', 'value="" selected');
+    }
+
+    html += '<div style="background:#071220;border:1px solid '+borderColor+';border-radius:10px;padding:12px 14px;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'
+        +'<input type="checkbox" id="sync-chk-'+idx+'" '+(conf!=='none'?'checked':'')+' data-idx="'+idx+'" style="width:17px;height:17px;accent-color:#3b82f6;cursor:pointer;flex-shrink:0">'
+        +'<span style="font-size:13px;color:#e8f0fe;font-family:Bebas Neue,monospace;letter-spacing:1px">'+dateFmt+'</span>'
+        +'<span style="font-size:11px;color:#60a5fa;background:#0d1e38;padding:2px 8px;border-radius:10px">'+m.mentor+'</span>'
+        +'<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:'+confMeta.color+'22;color:'+confMeta.color+';border:1px solid '+confMeta.color+'44">'+confMeta.label+'</span>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:80px 1fr;gap:8px 10px;align-items:center;font-size:12px">'
+        +'<div style="color:#3a5a8a">Planilha:</div>'
+        +'<div style="color:#e8f0fe;font-weight:600">'+item.sheetName+'</div>'
+        +'<div style="color:#3a5a8a">App:</div>'
+        +'<select id="sync-sel-'+idx+'" data-idx="'+idx+'" onchange="updateSyncRowStatus('+idx+')" style="background:#0d1e38;border:1px solid '+(match.player?'#1e3a6e':'#7f1d1d')+';color:#e8f0fe;padding:6px 10px;border-radius:7px;font-size:12px;outline:none;font-family:Inter,sans-serif;width:100%">'
+          +optsHtml
+        +'</select>'
+      +'</div>'
+      +'<div style="margin-top:10px;font-size:11px;color:#3a5a8a;border-top:1px solid #112040;padding-top:8px;display:flex;gap:10px;flex-wrap:wrap">'
+        +'<span>Ativ: <b style="color:#94a3b8">'+(m.atividade!=null?m.atividade:'—')+'</b></span>'
+        +'<span>Subida: <b style="color:#94a3b8">'+(m.subida!=null?m.subida:'—')+'</b></span>'
+        +'<span>Stats: <b style="color:#94a3b8">'+(m.stats!=null?m.stats:'—')+'</b></span>'
+        +'<span>Mind: <b style="color:#94a3b8">'+(m.mindset!=null?m.mindset:'—')+'</b></span>'
+        +'<span>Invest: <b style="color:#94a3b8">'+(m.investiria!=null?m.investiria:'—')+'</b></span>'
+      +'</div>'
+    +'</div>';
+  });
+
+  body.innerHTML = html;
+  footer.innerHTML = '<button class="btn btn-ghost" onclick="closeSheetSync()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="importSelectedFromSheet()">✅ Importar selecionadas</button>';
+}
+
+function updateSyncRowStatus(idx){
+  var sel = $('sync-sel-'+idx);
+  var chk = $('sync-chk-'+idx);
+  if(sel && chk){
+    if(sel.value && !chk.checked) chk.checked = true;
+    if(!sel.value) chk.checked = false;
+    // Update border color
+    if(sel.value){ sel.style.borderColor='#1e3a6e'; }
+    else { sel.style.borderColor='#7f1d1d'; }
+  }
+}
+
+function closeSheetSync(){
+  var m = $('sheet-sync-modal');
+  if(m) m.classList.remove('active');
+  window._sheetSyncItems = null;
+}
+
+async function importSelectedFromSheet(){
+  var items = window._sheetSyncItems || [];
+  var toImport = [];
+  items.forEach(function(item, idx){
+    var chk = $('sync-chk-'+idx);
+    var sel = $('sync-sel-'+idx);
+    if(chk && chk.checked && sel && sel.value){
+      toImport.push({ playerId: sel.value, mentoria: item.mentoria, sheetName: item.sheetName });
+    }
+  });
+
+  if(!toImport.length){
+    toast('Nenhuma mentoria selecionada.','err');
+    return;
+  }
+
+  var footer = $('sheet-sync-footer');
+  var btn = footer && footer.querySelector('.btn-primary');
+  if(btn){ btn.disabled=true; btn.textContent='Importando...'; btn.style.opacity='0.6'; }
+
+  var nickMap = getNicknameMap();
+  var imported = 0, errors = 0;
+
+  // Group by player
+  var byPlayer = {};
+  toImport.forEach(function(it){
+    if(!byPlayer[it.playerId]) byPlayer[it.playerId] = [];
+    byPlayer[it.playerId].push(it);
+  });
+
+  _savingUntil = Date.now()+60000;
+  syncStatus('syncing','Importando mentorias...');
+
+  for(var pid in byPlayer){
+    var p = players.find(function(x){return x.id===pid;});
+    if(!p){ errors++; continue; }
+    if(!p.mentorias) p.mentorias = [];
+
+    byPlayer[pid].forEach(function(it){
+      // Upsert: replace if same data+mentor exists, else push
+      var eIdx = p.mentorias.findIndex(function(m){
+        return m.data===it.mentoria.data && normN(m.mentor||'')===normN(it.mentoria.mentor||'');
+      });
+      if(eIdx>=0) p.mentorias[eIdx] = it.mentoria;
+      else p.mentorias.push(it.mentoria);
+
+      // Learn nickname mapping if the sheet name is different from player name
+      if(it.sheetName && normN(it.sheetName) !== normN(p.nome)){
+        nickMap[normN(it.sheetName)] = p.id;
+      }
+      imported++;
+    });
+
+    // Keep mentorias sorted newest-first
+    p.mentorias.sort(function(a,b){return(b.data||'')>(a.data||'')?1:-1;});
+
+    // Update ultimaMentoria to most recent
+    var lastDate = p.mentorias.map(function(m){return m.data||'';}).filter(Boolean).sort().reverse()[0];
+    if(lastDate && (!p.ultimaMentoria || lastDate>p.ultimaMentoria)){
+      p.ultimaMentoria = lastDate;
+    }
+
+    // Save to Firebase:
+    // 1) Explicit PUT of mentorias array (pushPlayer doesn't include it)
+    // 2) pushPlayer to update ultimaMentoria and other metadata
+    if(fbUrl){
+      try{
+        await fetch(fbBase()+'/'+p.id+'/mentorias.json', {
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(p.mentorias)
+        });
+      }catch(e){ console.error('Erro salvando mentorias de '+p.nome+':',e); errors++; }
+    }
+    try{ await pushPlayer(p); }catch(e){ errors++; }
+  }
+
+  saveNicknameMap(nickMap);
+  saveCache();
+  _savingUntil = 0;
+  syncStatus('ok','Sincronizado!');
+  closeSheetSync();
+  toast('✅ '+imported+' mentoria(s) importada(s)!'+(errors>0?' ('+errors+' erro(s))':''));
+  renderTab();
+}
+// ── / SHEET MENTORIA SYNC ──
 
 window.addEventListener('DOMContentLoaded',function(){
   loadCfg();
@@ -4115,5 +4506,22 @@ async function renderAgenda(){
   </div>
 </div>
 <!-- ── / INTERVENÇÃO MODAL ── -->
+
+<!-- ── SHEET SYNC MODAL ── -->
+<div class="overlay" id="sheet-sync-modal">
+  <div class="modal" style="max-width:780px">
+    <div class="mh">
+      <div>
+        <h2>🔄 Sincronizar Planilha de Mentorias</h2>
+        <div style="font-size:11px;color:#3a5a8a;margin-top:2px">Compare respostas do Google Forms com o app</div>
+      </div>
+      <button class="xbtn" onclick="closeSheetSync()">✕</button>
+    </div>
+    <div class="mb" id="sheet-sync-body" style="max-height:65vh;overflow-y:auto"></div>
+    <div class="mf" id="sheet-sync-footer"></div>
+  </div>
+</div>
+<!-- ── / SHEET SYNC MODAL ── -->
+
 </body>
 </html>
