@@ -199,7 +199,6 @@ td{padding:8px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:m
   <button class="tab-btn" id="tab-stats" onclick="setTab('stats')">stats</button>
   <button class="tab-btn" id="tab-mentorias" onclick="setTab('mentorias')">mentorias</button>
   <button class="tab-btn" id="tab-exjogadores" onclick="setTab('exjogadores')">ex-jogadores</button>
-  <button class="tab-btn" id="tab-agenda" onclick="setTab('agenda')">📅 agenda</button>
   <button class="tab-btn" id="tab-imports" onclick="setTab('imports')">📋 imports</button>
 </div>
 
@@ -442,14 +441,14 @@ var STATS_ORDER=[
   'Call River after X Turn vilão',
   'Probe Turn + Bet River BB','Lead Turn + Bet River BB',
   'Barrel afer XR flop BB'];
-var META_VOL={'liga':200,'power rangers':250,'xmen':300,'thundercats':350,'guardiao':350,'vingadores':400,'the boys':400,'coaches':400,'cavaleiros':450,'cavaleiros do zodiaco':450,'esquadrao':450,'esquadrao suicida':450,'super sayajins':500};
+var META_VOL={'liga':200,'liga da justica':200,'power rangers':250,'xmen':300,'thundercats':350,'guardiao':350,'vingadores':400,'the boys':400,'coaches':400,'cavaleiros':450,'cavaleiros do zodiaco':450,'esquadrao':450,'esquadrao suicida':450,'super sayajins':500};
 var BASE_CANON=['liga','guardiao','power rangers','thundercats','x-men','xmen'];
 var ELITE_CANON=['super sayajins','coaches','vingadores','cavaleiros','cavaleiros do zodiaco','esquadrao','the boys','esquadrao suicida'];
 
 function normStr(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');}
 function canonGrupo(g){
   var n=normStr(g);
-  var aliases={'liga da justica':'liga','guardioes':'guardiao','guardioes da galaxia':'guardiao','power ranges':'power rangers','x men':'xmen','x-men':'xmen','super sayajin':'super sayajins','esquadrão suicida':'esquadrao suicida','esquadrao':'esquadrao','cavaleiros do zodíaco':'cavaleiros do zodiaco'};
+  var aliases={'liga':'liga da justica','liga da justica':'liga da justica','liga da justiça':'liga da justica','guardioes':'guardioes da galaxia','guardioes da galaxia':'guardioes da galaxia','power ranges':'power rangers','x men':'x men','x-men':'x men','xmen':'x men','super sayajin':'super sayajins','esquadrão suicida':'esquadrao suicida','esquadrao':'esquadrao suicida','cavaleiros do zodíaco':'cavaleiros do zodiaco','cavaleiros':'cavaleiros do zodiaco'};
   return aliases[n]||n;
 }
 function matchesTier(grupo){
@@ -3374,7 +3373,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
 function setTab(t){
   activeTab=t;
-  ['resultados','swings','volume','stats','mentorias','exjogadores','agenda','imports'].forEach(function(tab){
+  ['resultados','swings','volume','stats','mentorias','exjogadores','imports'].forEach(function(tab){
     var btn=$('tab-'+tab);
     if(btn)btn.classList.toggle('active',tab===t);
   });
@@ -3434,7 +3433,6 @@ function renderTab(){
   else if(activeTab==='stats')renderStats_tab();
   else if(activeTab==='mentorias')renderMentoriasTab();
   else if(activeTab==='exjogadores')renderExJogadores();
-  else if(activeTab==='agenda')renderAgenda();
   else if(activeTab==='imports')renderImports();
 }
 
