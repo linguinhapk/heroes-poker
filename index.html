@@ -3594,18 +3594,13 @@ function openIntForm(id){
   var int=id?intervencoes.find(function(x){return x.id===id;}):null;
   document.getElementById('int-form-title').textContent=id?'Editar Intervenção':'Nova Intervenção';
   document.getElementById('if-acao').value=int?int.acao||'':'';
-  document.getElementById('if-responsavel').value=int?int.responsavel||'':'';
-  document.getElementById('if-prazo').value=int?int.prazo||'':'';
   document.getElementById('if-prioridade').value=int?int.prioridade||'media':'media';
   // Populate player datalist
   var jogInput=document.getElementById('if-jogador');
   jogInput.value=int?int.jogador||'':'';
   var dl=document.getElementById('if-jogador-list');
   if(dl)dl.innerHTML=players.slice().sort(function(a,b){return(a.nome||'')>(b.nome||'')?1:-1;}).map(function(p){return'<option value="'+p.nome+'"/>';}).join('');
-  // Populate responsavel datalist from saved list
-  var saved=JSON.parse(localStorage.getItem('hpt_instrutores')||'[]');
-  var rdl=document.getElementById('if-resp-list');
-  if(rdl)rdl.innerHTML=saved.map(function(n){return'<option value="'+n+'"/>';}).join('');
+
   document.getElementById('int-form-modal').classList.add('active');
   setTimeout(function(){document.getElementById('if-jogador').focus();},80);
 }
@@ -3615,20 +3610,16 @@ function closeIntForm(){document.getElementById('int-form-modal').classList.remo
 async function saveIntervencao(){
   var jogador=document.getElementById('if-jogador').value.trim();
   var acao=document.getElementById('if-acao').value.trim();
-  var responsavel=document.getElementById('if-responsavel').value.trim();
   if(!jogador){toast('Informe o jogador.','err');return;}
   if(!acao){toast('Informe a ação.','err');return;}
-  // Save new responsavel to localStorage
-  if(responsavel){
-    var saved=JSON.parse(localStorage.getItem('hpt_instrutores')||'[]');
-    if(!saved.includes(responsavel)){saved.push(responsavel);saved.sort();localStorage.setItem('hpt_instrutores',JSON.stringify(saved));}
-  }
+  // Auto-get responsavel from player's mentor
+  var playerObj=players.find(function(p){return p.nome.toLowerCase()===jogador.toLowerCase();});
+  var responsavel=playerObj&&playerObj.mentor?playerObj.mentor:'';
   var item={
     id:editIntId||'int_'+Date.now(),
     jogador:jogador,
     acao:acao,
     responsavel:responsavel,
-    prazo:document.getElementById('if-prazo').value||'',
     prioridade:document.getElementById('if-prioridade').value||'media',
     feito:false,
     feitoEm:'',
@@ -3656,8 +3647,6 @@ async function renderIntervencoes(){
 
   var PRIOR_COLOR={'alta':'#ef4444','media':'#eab308','baixa':'#34d399'};
   var PRIOR_LABEL={'alta':'🔴 Alta','media':'🟡 Média','baixa':'🟢 Baixa'};
-  var today=new Date().toISOString().slice(0,10);
-
   var pending=intervencoes.filter(function(x){return!x.feito;});
   var done=intervencoes.filter(function(x){return x.feito;});
 
@@ -3671,8 +3660,7 @@ async function renderIntervencoes(){
 
   function card(int){
     var col=PRIOR_COLOR[int.prioridade]||'#eab308';
-    var isPast=int.prazo&&int.prazo<today&&!int.feito;
-    var prazoFmt=int.prazo?int.prazo.slice(8)+'/'+int.prazo.slice(5,7)+'/'+int.prazo.slice(0,4):'';
+
     return '<div style="background:#071220;border:1px solid '+(int.feito?'#1e3a6e':col+'44')+';border-radius:10px;padding:14px 16px;margin-bottom:8px;opacity:'+(int.feito?'0.55':'1')+';display:flex;align-items:flex-start;gap:14px">'
       // Checkbox
       +'<div style="flex-shrink:0;padding-top:2px">'
@@ -3686,12 +3674,12 @@ async function renderIntervencoes(){
           +'<span style="font-size:14px;font-weight:700;color:#e8f0fe">'+int.jogador+'</span>'
           +'<span style="font-size:10px;background:'+col+'22;color:'+col+';padding:2px 8px;border-radius:10px;border:1px solid '+col+'44">'+PRIOR_LABEL[int.prioridade]+'</span>'
           +(int.feito?'<span style="font-size:10px;background:#16a34a22;color:#34d399;padding:2px 8px;border-radius:10px;border:1px solid #16a34a44">✅ Concluída'+( int.feitoEm?' em '+int.feitoEm.slice(8)+'/'+int.feitoEm.slice(5,7):'')+' </span>':'')
-          +(isPast?'<span style="font-size:10px;background:#dc262622;color:#f87171;padding:2px 8px;border-radius:10px;border:1px solid #dc262644">⚠️ Atrasada</span>':'')
+          
         +'</div>'
         +'<div style="font-size:13px;color:#94a3b8;margin-bottom:6px;line-height:1.5">'+int.acao+'</div>'
         +'<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#3a5a8a">'
           +(int.responsavel?'<span>👤 '+int.responsavel+'</span>':'')
-          +(prazoFmt?'<span style="color:'+(isPast?'#f87171':'#3a5a8a')+'">📅 Prazo: '+prazoFmt+'</span>':'')
+          
           +'<span>🗓 '+int.data+'</span>'
         +'</div>'
       +'</div>'
@@ -4093,13 +4081,6 @@ async function renderAgenda(){
       </div>
       <div><label class="fl">Ação / Descrição</label>
         <textarea id="if-acao" class="fi" rows="3" placeholder="Ex: Aumentar volume, revisar preflop, intervir no mindset..."></textarea>
-      </div>
-      <div><label class="fl">Responsável</label>
-        <input type="text" id="if-responsavel" class="fi" list="if-resp-list" placeholder="Nome do coach responsável...">
-        <datalist id="if-resp-list"></datalist>
-      </div>
-      <div><label class="fl">Prazo <span style="color:#3a5a8a">(opcional)</span></label>
-        <input type="date" id="if-prazo" class="fi">
       </div>
       <div><label class="fl">Prioridade</label>
         <select id="if-prioridade" class="fi">
