@@ -2004,7 +2004,113 @@ async function analyze(dataUrl){
     renderExtracted(parsed);s.className='ai-msg ai-ok';s.textContent=parsed.length+' jogadores encontrados!';$('ew').style.display='block';$('ifooter').style.display='flex';
   }catch(e){s.className='ai-msg ai-err';s.textContent='Erro: '+e.message;}
 }
-function renderExtracted(data){$('eb').innerHTML=data.map(function(p,i){var ex=players.find(function(x){return x.nome.toLowerCase()===p.nome.toLowerCase();});var tag=ex?'<span style="font-size:10px;color:#fbbf24;background:#451a03;padding:1px 6px;border-radius:10px;margin-left:5px">atualizar</span>':'<span style="font-size:10px;color:#34d399;background:#052e16;padding:1px 6px;border-radius:10px;margin-left:5px">novo</span>';var pc=p.profit>=0?'#34d399':'#f87171';return'<tr id="r'+i+'"><td><input type="checkbox" checked onchange="togRow('+i+',this)"></td><td>'+p.nome+tag+'</td><td style="color:#60a5fa;font-size:10px">'+(p.grupo||'—')+'</td><td>'+(p.torneios||'—')+'</td><td style="color:#93c5fd">'+(p.avb!=null?p.avb.toFixed(1):'—')+'</td><td style="color:'+pc+';font-weight:600">'+(p.profit>=0?'+':'')+((p.profit||0).toFixed(2))+'</td></tr>';}).join('');$('sa').checked=true;}
+function renderExtracted(data){
+  // Resolve each row's match and store it for doImport
+  var rows = data.map(function(p, i){
+    var match = matchSheetPlayer(p.nome || '');
+    // Filter out group/header rows (same check as doImport)
+    var nLow = normStr(p.nome||'');
+    var knownGroups = ['heroes','coaches','cavaleiros','cavaleiros do zodiaco','esquadrao','esquadrao suicida','super sayajins','the boys','vingadores','liga','liga da justica','power rangers','thundercats','x-men','xmen','guardioes','guardiao','guardioes da galaxia','x men','guardioes da galaxia'];
+    var isGroup = knownGroups.some(function(g){return normStr(g)===nLow;});
+    var isHeader = !p.nome || p.nome.trim().length<2 || (p.grupo && normStr(p.grupo)===nLow) || (p.nome===p.nome.toUpperCase() && p.nome.length>4 && (!p.grupo || normStr(p.grupo)===nLow));
+    return { i:i, p:p, match:match, isGroup:isGroup||isHeader };
+  });
+
+  // Build shared dropdown <option> list once (sorted)
+  var playersSorted = players.slice().filter(function(x){return x && x.nome;}).sort(function(a,b){return(a.nome||'').localeCompare(b.nome||'');});
+  var baseOpts = '<option value="">— Criar novo jogador —</option>' + playersSorted.map(function(x){
+    return '<option value="'+x.id+'">'+x.nome+(x.nick?' (@'+x.nick+')':'')+'</option>';
+  }).join('');
+
+  // Expose resolved rows globally so doImport can read them
+  window._importRows = rows;
+
+  var confMeta = {
+    exact:   { color:'#34d399', bg:'#052e16', label:'✓ exato' },
+    saved:   { color:'#34d399', bg:'#052e16', label:'✓ salvo antes' },
+    nick:    { color:'#60a5fa', bg:'#0a2040', label:'✓ apelido' },
+    partial: { color:'#fbbf24', bg:'#451a03', label:'⚠ parcial — revise' },
+    tokens:  { color:'#fbbf24', bg:'#451a03', label:'⚠ tokens — revise' },
+    none:    { color:'#34d399', bg:'#052e16', label:'+ NOVO' }
+  };
+
+  $('eb').innerHTML = rows.map(function(r){
+    var p = r.p, i = r.i, match = r.match;
+    if(r.isGroup){
+      // Skipped group/header row — rendered disabled/dimmed
+      return '<tr id="r'+i+'" class="skip" style="opacity:0.3">'
+        +'<td><input type="checkbox" disabled></td>'
+        +'<td style="font-style:italic;color:#3a5a8a">'+p.nome+' (ignorado — parece grupo/cabeçalho)</td>'
+        +'<td colspan="4"></td></tr>';
+    }
+    var pc = p.profit>=0?'#34d399':'#f87171';
+    var cm = confMeta[match.confidence] || confMeta.none;
+    var needsPicker = match.confidence==='none' || match.confidence==='partial' || match.confidence==='tokens';
+
+    // Build player cell with tag and (optionally) dropdown
+    var nameCell = '<div style="display:flex;flex-direction:column;gap:3px">'
+      +'<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'
+        +'<span style="font-weight:500">'+p.nome+'</span>'
+        +'<span style="font-size:10px;color:'+cm.color+';background:'+cm.bg+';padding:1px 6px;border-radius:10px;border:1px solid '+cm.color+'44">'+cm.label+'</span>'
+      +'</div>';
+    if(match.player){
+      nameCell += '<div style="font-size:10px;color:#60a5fa">→ '+match.player.nome+(match.player.nick?' (@'+match.player.nick+')':'')+'</div>';
+    }
+    // Show dropdown for uncertain/none matches so user can bind to existing player
+    var opts = baseOpts;
+    if(match.player){
+      opts = opts.replace('value="'+match.player.id+'"', 'value="'+match.player.id+'" selected');
+    }
+    if(needsPicker || match.confidence==='none'){
+      nameCell += '<select id="rs'+i+'" data-idx="'+i+'" onchange="updateImportRowMatch('+i+')" style="margin-top:4px;background:#071220;border:1px solid '+(match.player?'#1e3a6e':'#78350f')+';color:#e8f0fe;padding:4px 8px;border-radius:6px;font-size:11px;outline:none;font-family:Inter,sans-serif;max-width:260px">'+opts+'</select>';
+    }
+    nameCell += '</div>';
+
+    return '<tr id="r'+i+'">'
+      +'<td><input type="checkbox" checked onchange="togRow('+i+',this)"></td>'
+      +'<td>'+nameCell+'</td>'
+      +'<td style="color:#60a5fa;font-size:10px">'+(p.grupo||'—')+'</td>'
+      +'<td>'+(p.torneios||'—')+'</td>'
+      +'<td style="color:#93c5fd">'+(p.avb!=null?p.avb.toFixed(1):'—')+'</td>'
+      +'<td style="color:'+pc+';font-weight:600">'+(p.profit>=0?'+':'')+((p.profit||0).toFixed(2))+'</td>'
+      +'</tr>';
+  }).join('');
+  $('sa').checked = true;
+
+  // Summary in footer
+  var summary = { ok:0, revise:0, novo:0, ignorado:0 };
+  rows.forEach(function(r){
+    if(r.isGroup){ summary.ignorado++; return; }
+    var c = r.match.confidence;
+    if(c==='exact'||c==='saved'||c==='nick') summary.ok++;
+    else if(c==='partial'||c==='tokens') summary.revise++;
+    else summary.novo++;
+  });
+  var ic = $('import-count');
+  if(ic){
+    var parts = [];
+    if(summary.ok) parts.push('<span style="color:#34d399">✓ '+summary.ok+' certo(s)</span>');
+    if(summary.revise) parts.push('<span style="color:#fbbf24">⚠ '+summary.revise+' pra revisar</span>');
+    if(summary.novo) parts.push('<span style="color:#60a5fa">+ '+summary.novo+' novo(s)</span>');
+    if(summary.ignorado) parts.push('<span style="color:#3a5a8a">'+summary.ignorado+' ignorado(s)</span>');
+    ic.innerHTML = parts.join(' · ');
+  }
+}
+function updateImportRowMatch(i){
+  // Called when user picks a different player in the dropdown
+  var rows = window._importRows || [];
+  var row = rows[i]; if(!row) return;
+  var sel = document.getElementById('rs'+i); if(!sel) return;
+  var newPid = sel.value;
+  if(newPid){
+    var p = players.find(function(x){return x.id===newPid;});
+    row.match = { player: p, confidence: 'manual' };
+    sel.style.borderColor = '#1e3a6e';
+  } else {
+    row.match = { player: null, confidence: 'none' };
+    sel.style.borderColor = '#78350f';
+  }
+}
 function togRow(i,cb){document.getElementById('r'+i).classList.toggle('skip',!cb.checked);}
 function toggleAll(cb){extData.forEach(function(_,i){var r=document.getElementById('r'+i);r.querySelector('input[type=checkbox]').checked=cb.checked;r.classList.toggle('skip',!cb.checked);});}
 
@@ -2551,7 +2657,7 @@ function renderMentoriasTab(){
   if(!lista.length){
     ra.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'
       +'<div style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:2px;font-weight:600">🎯 Mentorias</div>'
-      +'<button class="btn btn-import btn-sm" onclick="openSheetSync()">🔄 Sincronizar Planilha</button>'
+      +'<button class="btn btn-import btn-sm" onclick="openSheetSync()">🔄 Sincronizar Planilha</button> <button class="btn btn-ghost btn-sm" onclick="openCicloReview()" style="background:#140a2e;color:#c4b5fd;border-color:#4c1d95">🎓 Ciclo</button>'
       +'</div>'
       +'<div class="tw"><div class="empty" style="padding:40px 0">'
       +'<div style="font-size:36px;margin-bottom:10px">✅</div>'
@@ -2585,7 +2691,7 @@ function renderMentoriasTab(){
 
   ra.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">'
     +'<div style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:2px;font-weight:600">🎯 Mentorias</div>'
-    +'<button class="btn btn-import btn-sm" onclick="openSheetSync()">🔄 Sincronizar Planilha</button>'
+    +'<button class="btn btn-import btn-sm" onclick="openSheetSync()">🔄 Sincronizar Planilha</button> <button class="btn btn-ghost btn-sm" onclick="openCicloReview()" style="background:#140a2e;color:#c4b5fd;border-color:#4c1d95">🎓 Ciclo</button>'
     +'</div>'
     +'<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
     +'<div style="font-size:13px;color:#94a3b8"><span style="color:#f87171;font-weight:600">'+lista.length+'</span> jogadores precisam de mentoria</div>'
@@ -2701,39 +2807,58 @@ function generatePlayerLink(pid){
 function doImport(){
   var di=$('rs-ini').value,df=$('rs-fim').value;if(di)localStorage.setItem('hpt_dates',JSON.stringify({ini:di,fim:df}));
   var importId='imp_'+Date.now();
-  var added=0,updated=0,toSave=[];
-  extData.forEach(function(p,i){
-    if(document.getElementById('r'+i).classList.contains('skip'))return;
-    var nLow=normStr(p.nome||'');
-    var knownGroups=['heroes','coaches','cavaleiros','cavaleiros do zodiaco','esquadrao','esquadrao suicida','super sayajins','the boys','vingadores','liga','liga da justica','liga da justica','power rangers','thundercats','x-men','xmen','guardioes','guardiao','guardioes da galaxia','super sayajins','thundercats','x men','guardioes da galaxia'];
-    // Normalize knownGroups for comparison (remove accents)
-    var isGroup=knownGroups.some(function(g){return normStr(g)===nLow;});
-    // Skip if name matches a known group name
-    if(isGroup||!p.nome||p.nome.trim().length<2)return;
-    // Skip if nome === grupo (header rows)
-    if(p.grupo&&normStr(p.grupo)===nLow)return;
-    // Skip if nome contains only uppercase words and matches group pattern (e.g. "LIGA DA JUSTICA")
-    if(p.nome===p.nome.toUpperCase()&&p.nome.length>4&&(!p.grupo||normStr(p.grupo)===nLow))return;
-    var prof=p.profit||0,avb=p.avb||0;var swing=avb>0?parseFloat((prof/avb).toFixed(1)):0;
-    var dataStr=di||new Date().toISOString().slice(0,10);
-    var record={data:dataStr,fim:df||'',torneios:p.torneios||0,avb:avb,profit_usd:prof,swing:swing,grupo:p.grupo||'',importId:importId};
-    var ex=players.find(function(x){return x.nome.toLowerCase()===p.nome.toLowerCase();});
+  var added=0,updated=0,bound=0,toSave=[];
+  var rows = window._importRows || [];
+  var nickMap = getNicknameMap();
+  rows.forEach(function(r){
+    var i = r.i, p = r.p, match = r.match;
+    if(r.isGroup) return; // group/header rows skipped
+    var tr = document.getElementById('r'+i);
+    if(!tr || tr.classList.contains('skip')) return;
+    var chk = tr.querySelector('input[type=checkbox]');
+    if(chk && !chk.checked) return;
+
+    var prof=p.profit||0, avb=p.avb||0;
+    var swing = avb>0 ? parseFloat((prof/avb).toFixed(1)) : 0;
+    var dataStr = di || new Date().toISOString().slice(0,10);
+    var record = { data:dataStr, fim:df||'', torneios:p.torneios||0, avb:avb, profit_usd:prof, swing:swing, grupo:p.grupo||'', importId:importId };
+
+    var ex = match && match.player ? match.player : null;
     if(ex){
-      if(!ex.records)ex.records=[];
-      // Replace any existing record from the same month (same mês prefix)
-      var mesPref=dataStr.slice(0,7);
-      ex.records=ex.records.filter(function(r){return!r.data||r.data.slice(0,7)!==mesPref;});
+      if(!ex.records) ex.records = [];
+      // Replace any existing record from the same month
+      var mesPref = dataStr.slice(0,7);
+      ex.records = ex.records.filter(function(x){return !x.data || x.data.slice(0,7)!==mesPref;});
       ex.records.push(record);
-      if(p.grupo&&!ex.grupo)ex.grupo=p.grupo;
-      toSave.push(ex);updated++;}
-    else{var np={id:Date.now().toString()+Math.random().toString(36).slice(2),nome:p.nome,nick:'',grupo:p.grupo||'',tel:'',email:'',notas:'',records:[record],estrategias:[],swingBaseline:0};players.push(np);toSave.push(np);added++;}
+      if(p.grupo && !ex.grupo) ex.grupo = p.grupo;
+      toSave.push(ex);
+      updated++;
+      // Learn nickname mapping if sheet name differs from player name
+      if(p.nome && normStr(p.nome) !== normStr(ex.nome)){
+        nickMap[normStr(p.nome)] = ex.id;
+        bound++;
+      }
+    } else {
+      // No match resolved → create new player
+      var np = { id:Date.now().toString()+Math.random().toString(36).slice(2), nome:p.nome, nick:'', grupo:p.grupo||'', tel:'', email:'', notas:'', records:[record], estrategias:[], swingBaseline:0 };
+      players.push(np);
+      toSave.push(np);
+      added++;
+    }
   });
+  saveNicknameMap(nickMap);
   // Save import log
   if(fbUrl&&(added+updated)>0){
-    var importLog={id:importId,ini:di,fim:df||'',data:new Date().toISOString().slice(0,10),hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),added:added,updated:updated,jogadores:toSave.map(function(p){return{id:p.id,nome:p.nome};})};
+    var importLog={id:importId,ini:di,fim:df||'',data:new Date().toISOString().slice(0,10),hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),added:added,updated:updated,jogadores:toSave.map(function(x){return{id:x.id,nome:x.nome};})};
     fetch(fbImports()+'/'+importId+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(importLog)}).catch(function(){});
   }
-  closeImport();renderTab();toast(added+' adicionados, '+updated+' atualizados');logHistory('record_importado',added+' novos, '+updated+' atualizados');toSave.forEach(function(p){pushPlayer(p);});
+  closeImport();
+  renderTab();
+  var msg = added+' novos, '+updated+' atualizados';
+  if(bound>0) msg += ' · '+bound+' apelido(s) aprendido(s)';
+  toast(msg);
+  logHistory('record_importado', msg);
+  toSave.forEach(function(x){pushPlayer(x);});
 }
 
 // ── ESTRATEGIAS (separate Firebase path to prevent overwrite) ──
@@ -3728,6 +3853,215 @@ async function importSelectedFromSheet(){
   renderTab();
 }
 // ── / SHEET MENTORIA SYNC ──
+
+// ── CICLO DE MENTORIA — Atualização de datas ──
+// Dados fixos extraídos da planilha "Avaliação Ciclo Mentoria" (21-23/04/2026)
+// Só atualiza `ultimaMentoria` do jogador — não salva feedback.
+var CICLO_ULT_MENTORIA = [
+  // { nomeForm: nome como está na planilha, data: data ISO da última mentoria (col D) }
+  { nomeForm: 'André Oliveira',        data: '2026-02-24' },
+  { nomeForm: 'Edu',                   data: '2026-04-09' },
+  { nomeForm: 'Ronie',                 data: '2026-04-11' },
+  { nomeForm: 'Alvim',                 data: '2026-02-21' },
+  { nomeForm: 'Bruno FIllipy',         data: '' },
+  { nomeForm: 'Fred',                  data: '2026-04-09' },
+  { nomeForm: 'Vitor Natã',            data: '' },
+  { nomeForm: 'david sella',           data: '' },
+  { nomeForm: 'Mariano',               data: '2026-04-09' },
+  { nomeForm: 'Fabricio Arli',         data: '2026-02-11' },
+  { nomeForm: 'Márcio Campos',         data: '2026-02-06' },
+  { nomeForm: 'Maycow',                data: '2026-04-09' },
+  { nomeForm: 'Bernardo Catelan',      data: '2026-04-17' },
+  { nomeForm: 'Vinícius Galuppo',      data: '' },
+  { nomeForm: 'Weverton Martins',      data: '2026-04-16' },
+  { nomeForm: 'Andrey Pontes',         data: '2026-04-15' },
+  { nomeForm: 'Guilherme Morgenstern', data: '2026-04-13' },
+  { nomeForm: 'Henrique Nogueira',     data: '2026-04-20' },
+  { nomeForm: 'Jaison',                data: '2026-04-07' },
+  { nomeForm: 'Ricardo Yai',           data: '2026-04-14' },
+  { nomeForm: 'Gabriel SMR',           data: '2026-04-13' },
+  { nomeForm: 'Willian Bonatto',       data: '2026-04-15' },
+  { nomeForm: 'João Boechadt',         data: '2026-04-15' },
+  { nomeForm: 'Willian Cestari',       data: '2026-04-16' },
+  { nomeForm: 'Fernando Indio',        data: '' }, // data "06/02/2024" parece typo; deixei vazio
+  { nomeForm: 'Caique Abeldt',         data: '' },
+  { nomeForm: 'Bruno Martinelli',      data: '2026-04-20' },
+  { nomeForm: 'Nathan Doarte',         data: '2026-02-20' },
+  { nomeForm: 'Rodrigo Roleto',        data: '2026-02-03' }
+];
+
+function openCicloReview(){
+  if(!players.length){
+    toast('Aguarde o carregamento dos jogadores...','err');
+    return;
+  }
+  var modal = $('sheet-sync-modal');
+  if(!modal){
+    toast('Modal não encontrado','err');
+    return;
+  }
+  modal.classList.add('active');
+
+  // Resolve each entry's match
+  var items = CICLO_ULT_MENTORIA.map(function(entry){
+    var match = matchSheetPlayer(entry.nomeForm);
+    return { nomeForm: entry.nomeForm, data: entry.data, match: match };
+  });
+
+  window._cicloItems = items;
+
+  // Build shared player <option> list
+  var playersSorted = players.slice().filter(function(x){return x && x.nome;}).sort(function(a,b){return(a.nome||'').localeCompare(b.nome||'');});
+  var baseOpts = '<option value="">— Pular (não atualizar) —</option>' + playersSorted.map(function(x){
+    return '<option value="'+x.id+'">'+x.nome+(x.nick?' (@'+x.nick+')':'')+'</option>';
+  }).join('');
+
+  var confMeta = {
+    exact:   { color:'#34d399', label:'✓ exato' },
+    saved:   { color:'#34d399', label:'✓ salvo antes' },
+    nick:    { color:'#60a5fa', label:'✓ apelido' },
+    partial: { color:'#fbbf24', label:'⚠ parcial' },
+    tokens:  { color:'#fbbf24', label:'⚠ tokens' },
+    none:    { color:'#f87171', label:'❌ escolha' }
+  };
+
+  var unmatchedCount = items.filter(function(it){return !it.match.player;}).length;
+
+  var html = '<div style="font-size:12px;color:#94a3b8;margin-bottom:14px;padding:10px 12px;background:#071220;border:1px solid #112040;border-radius:8px;line-height:1.5">'
+    +'<div style="font-weight:600;color:#c4b5fd;margin-bottom:4px">🔄 Avaliação de Ciclo de Mentoria</div>'
+    +'<div><span style="color:#34d399;font-weight:700">'+items.length+'</span> jogador(es) da planilha. '
+    +'Vou apenas atualizar a <b style="color:#93c5fd">data da última mentoria</b> — nenhum feedback será salvo.</div>'
+    +(unmatchedCount>0
+      ?'<div style="margin-top:6px;font-size:11px;color:#fbbf24">⚠️ '+unmatchedCount+' sem match automático — selecione ou pule</div>'
+      :'<div style="margin-top:6px;font-size:11px;color:#34d399">✓ Todos com jogador detectado</div>')
+    +'</div>';
+
+  items.forEach(function(item, idx){
+    var match = item.match;
+    var conf = match.confidence;
+    var cm = confMeta[conf] || { color:'#94a3b8', label:conf };
+    var dateFmt = item.data && item.data.length>=10 ? item.data.slice(8,10)+'/'+item.data.slice(5,7)+'/'+item.data.slice(0,4) : '—';
+    var needsAttention = conf==='none' || conf==='tokens' || conf==='partial';
+    var borderColor = conf==='none'?'#7f1d1d':(needsAttention?'#78350f':'#1e3a6e');
+    var noDate = !item.data;
+
+    // Build options with matched player pre-selected
+    var optsHtml;
+    if(match.player){
+      optsHtml = baseOpts.replace('value="'+match.player.id+'"', 'value="'+match.player.id+'" selected');
+    } else {
+      optsHtml = baseOpts.replace('value=""', 'value="" selected');
+    }
+
+    html += '<div style="background:#071220;border:1px solid '+borderColor+';border-radius:10px;padding:12px 14px;margin-bottom:8px"'+(noDate?' title="Sem data na planilha — será pulado"':'')+'>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'
+        +'<input type="checkbox" id="ciclo-chk-'+idx+'" '+(conf!=='none' && !noDate?'checked':'')+(noDate?' disabled':'')+' data-idx="'+idx+'" style="width:17px;height:17px;accent-color:#7c3aed;cursor:pointer;flex-shrink:0">'
+        +'<span style="font-size:13px;color:#e8f0fe;font-weight:600">'+item.nomeForm+'</span>'
+        +'<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:'+cm.color+'22;color:'+cm.color+';border:1px solid '+cm.color+'44">'+cm.label+'</span>'
+        +(noDate?'<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#3a2020;color:#f87171;border:1px solid #7f1d1d">sem data</span>':'<span style="font-size:11px;color:#c4b5fd;font-family:Bebas Neue,monospace;letter-spacing:1px;margin-left:auto">📅 '+dateFmt+'</span>')
+      +'</div>'
+      +'<select id="ciclo-sel-'+idx+'" data-idx="'+idx+'" onchange="updateCicloRowStatus('+idx+')" '+(noDate?'disabled':'')+' style="background:#0d1e38;border:1px solid '+(match.player?'#1e3a6e':'#7f1d1d')+';color:#e8f0fe;padding:7px 10px;border-radius:7px;font-size:12px;outline:none;font-family:Inter,sans-serif;width:100%'+(noDate?';opacity:0.4':'')+'">'
+        +optsHtml
+      +'</select>'
+    +'</div>';
+  });
+
+  $('sheet-sync-body').innerHTML = html;
+  $('sheet-sync-footer').innerHTML = '<button class="btn btn-ghost" onclick="closeSheetSync()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="applyCicloUpdates()">✅ Atualizar datas</button>';
+}
+
+function updateCicloRowStatus(idx){
+  var sel = $('ciclo-sel-'+idx);
+  var chk = $('ciclo-chk-'+idx);
+  if(sel && chk){
+    if(sel.value && !chk.checked) chk.checked = true;
+    if(!sel.value) chk.checked = false;
+    sel.style.borderColor = sel.value ? '#1e3a6e' : '#7f1d1d';
+  }
+}
+
+async function applyCicloUpdates(){
+  var items = window._cicloItems || [];
+  var toUpdate = [];
+  items.forEach(function(item, idx){
+    var chk = $('ciclo-chk-'+idx);
+    var sel = $('ciclo-sel-'+idx);
+    if(chk && chk.checked && sel && sel.value && item.data){
+      toUpdate.push({ playerId: sel.value, data: item.data, nomeForm: item.nomeForm });
+    }
+  });
+
+  if(!toUpdate.length){
+    toast('Nenhum jogador selecionado.','err');
+    return;
+  }
+
+  var footer = $('sheet-sync-footer');
+  var btn = footer && footer.querySelector('.btn-primary');
+  if(btn){ btn.disabled=true; btn.textContent='Atualizando...'; btn.style.opacity='0.6'; }
+
+  var nickMap = getNicknameMap();
+  var updated = 0, skipped = 0, errors = 0;
+
+  _savingUntil = Date.now()+60000;
+  syncStatus('syncing','Atualizando datas...');
+
+  for(var i=0; i<toUpdate.length; i++){
+    var it = toUpdate[i];
+    var p = players.find(function(x){return x.id===it.playerId;});
+    if(!p){ errors++; continue; }
+
+    // Only update if the new date is more recent than existing ultimaMentoria
+    var current = p.ultimaMentoria || '';
+    if(current && current >= it.data){
+      skipped++;
+      continue;
+    }
+
+    p.ultimaMentoria = it.data;
+
+    // Learn nickname if different from player name
+    if(it.nomeForm && normN(it.nomeForm) !== normN(p.nome)){
+      nickMap[normN(it.nomeForm)] = p.id;
+    }
+
+    // Update local array
+    var pi = players.findIndex(function(x){return x.id===p.id;});
+    if(pi>=0) players[pi] = p;
+
+    // Persist just ultimaMentoria to Firebase
+    if(fbUrl){
+      try{
+        await fetch(fbBase()+'/'+p.id+'/ultimaMentoria.json', {
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(it.data)
+        });
+        updated++;
+      }catch(e){
+        console.error('Erro ao salvar ultimaMentoria de '+p.nome+':',e);
+        errors++;
+      }
+    } else {
+      updated++;
+    }
+  }
+
+  saveNicknameMap(nickMap);
+  saveCache();
+  _savingUntil = 0;
+  syncStatus('ok','Concluído');
+  closeSheetSync();
+
+  var msg = '✅ '+updated+' data(s) atualizada(s)';
+  if(skipped>0) msg += ' · '+skipped+' já mais recente(s)';
+  if(errors>0) msg += ' · '+errors+' erro(s)';
+  toast(msg);
+  logHistory('mentoria_alterada', updated+' jogadores via Ciclo de Mentoria');
+  renderTab();
+}
+// ── / CICLO ──
 
 window.addEventListener('DOMContentLoaded',function(){
   loadCfg();
