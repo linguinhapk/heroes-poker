@@ -200,6 +200,7 @@ td{padding:8px 14px;font-size:13px;border-top:1px solid #112040;vertical-align:m
   <button class="tab-btn" id="tab-mentorias" onclick="setTab('mentorias')">mentorias</button>
   <button class="tab-btn" id="tab-exjogadores" onclick="setTab('exjogadores')">ex-jogadores</button>
   <button class="tab-btn" id="tab-imports" onclick="setTab('imports')">📋 imports</button>
+  <button class="tab-btn" id="tab-intervencoes" onclick="setTab('intervencoes')">⚡ intervenções</button>
 </div>
 
 <div id="sg" class="stats-grid"></div>
@@ -707,6 +708,7 @@ function saveCache(){
 var fbBase=function(){return fbUrl+'/hpt_players';};
 var fbAgenda=function(){return fbUrl+'/hpt_agenda';};
 var fbImports=function(){return fbUrl+'/hpt_imports';};
+var fbIntervencoes=function(){return fbUrl+'/hpt_intervencoes';};
 var agendaItems=[];
 var editAulaId=null;
 var playerMetas={};
@@ -3373,7 +3375,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
 function setTab(t){
   activeTab=t;
-  ['resultados','swings','volume','stats','mentorias','exjogadores','imports'].forEach(function(tab){
+  ['resultados','swings','volume','stats','mentorias','exjogadores','imports','intervencoes'].forEach(function(tab){
     var btn=$('tab-'+tab);
     if(btn)btn.classList.toggle('active',tab===t);
   });
@@ -3434,6 +3436,7 @@ function renderTab(){
   else if(activeTab==='mentorias')renderMentoriasTab();
   else if(activeTab==='exjogadores')renderExJogadores();
   else if(activeTab==='imports')renderImports();
+  else if(activeTab==='intervencoes')renderIntervencoes();
 }
 
 
@@ -3539,6 +3542,182 @@ function adminLogout(){
 
 
 
+
+
+// ── INTERVENÇÕES ──
+var intervencoes = [];
+var editIntId = null;
+
+async function fetchIntervencoes(){
+  if(!fbUrl)return;
+  try{
+    var r=await fetch(fbIntervencoes()+'.json');
+    if(!r.ok)return;
+    var d=await r.json();
+    intervencoes=d&&typeof d==='object'?Object.values(d).filter(Boolean):[];
+    intervencoes.sort(function(a,b){
+      // Sort: pending first, then by priority, then by date
+      var ap=a.feito?1:0,bp=b.feito?1:0;
+      if(ap!==bp)return ap-bp;
+      var po={'alta':0,'media':1,'baixa':2};
+      var pa=po[a.prioridade]||1,pb=po[b.prioridade]||1;
+      if(pa!==pb)return pa-pb;
+      return(b.data||'')>(a.data||'')?1:-1;
+    });
+  }catch(e){intervencoes=[];}
+}
+
+async function toggleIntervencao(id){
+  var int=intervencoes.find(function(x){return x.id===id;});
+  if(!int)return;
+  int.feito=!int.feito;
+  int.feitoEm=int.feito?new Date().toISOString().slice(0,10):'';
+  if(fbUrl){
+    try{
+      await fetch(fbIntervencoes()+'/'+id+'/feito.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(int.feito)});
+      await fetch(fbIntervencoes()+'/'+id+'/feitoEm.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(int.feitoEm)});
+    }catch(e){}
+  }
+  renderIntervencoes();
+}
+
+async function deleteIntervencao(id){
+  if(!confirm('Remover esta intervenção?'))return;
+  if(fbUrl){try{await fetch(fbIntervencoes()+'/'+id+'.json',{method:'DELETE'});}catch(e){}}
+  intervencoes=intervencoes.filter(function(x){return x.id!==id;});
+  renderIntervencoes();
+  toast('Intervenção removida!');
+}
+
+function openIntForm(id){
+  editIntId=id||null;
+  var int=id?intervencoes.find(function(x){return x.id===id;}):null;
+  document.getElementById('int-form-title').textContent=id?'Editar Intervenção':'Nova Intervenção';
+  document.getElementById('if-acao').value=int?int.acao||'':'';
+  document.getElementById('if-responsavel').value=int?int.responsavel||'':'';
+  document.getElementById('if-prazo').value=int?int.prazo||'':'';
+  document.getElementById('if-prioridade').value=int?int.prioridade||'media':'media';
+  // Populate player datalist
+  var jogInput=document.getElementById('if-jogador');
+  jogInput.value=int?int.jogador||'':'';
+  var dl=document.getElementById('if-jogador-list');
+  if(dl)dl.innerHTML=players.slice().sort(function(a,b){return(a.nome||'')>(b.nome||'')?1:-1;}).map(function(p){return'<option value="'+p.nome+'"/>';}).join('');
+  // Populate responsavel datalist from saved list
+  var saved=JSON.parse(localStorage.getItem('hpt_instrutores')||'[]');
+  var rdl=document.getElementById('if-resp-list');
+  if(rdl)rdl.innerHTML=saved.map(function(n){return'<option value="'+n+'"/>';}).join('');
+  document.getElementById('int-form-modal').classList.add('active');
+  setTimeout(function(){document.getElementById('if-jogador').focus();},80);
+}
+
+function closeIntForm(){document.getElementById('int-form-modal').classList.remove('active');editIntId=null;}
+
+async function saveIntervencao(){
+  var jogador=document.getElementById('if-jogador').value.trim();
+  var acao=document.getElementById('if-acao').value.trim();
+  var responsavel=document.getElementById('if-responsavel').value.trim();
+  if(!jogador){toast('Informe o jogador.','err');return;}
+  if(!acao){toast('Informe a ação.','err');return;}
+  // Save new responsavel to localStorage
+  if(responsavel){
+    var saved=JSON.parse(localStorage.getItem('hpt_instrutores')||'[]');
+    if(!saved.includes(responsavel)){saved.push(responsavel);saved.sort();localStorage.setItem('hpt_instrutores',JSON.stringify(saved));}
+  }
+  var item={
+    id:editIntId||'int_'+Date.now(),
+    jogador:jogador,
+    acao:acao,
+    responsavel:responsavel,
+    prazo:document.getElementById('if-prazo').value||'',
+    prioridade:document.getElementById('if-prioridade').value||'media',
+    feito:false,
+    feitoEm:'',
+    data:new Date().toISOString().slice(0,10)
+  };
+  if(editIntId){
+    var old=intervencoes.find(function(x){return x.id===editIntId;});
+    if(old){item.feito=old.feito;item.feitoEm=old.feitoEm;}
+  }
+  if(fbUrl){
+    try{await fetch(fbIntervencoes()+'/'+item.id+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});}catch(e){}
+  }
+  var idx=intervencoes.findIndex(function(x){return x.id===item.id;});
+  if(idx>=0)intervencoes[idx]=item;else intervencoes.push(item);
+  intervencoes.sort(function(a,b){var ap=a.feito?1:0,bp=b.feito?1:0;if(ap!==bp)return ap-bp;var po={'alta':0,'media':1,'baixa':2};return(po[a.prioridade]||1)-(po[b.prioridade]||1);});
+  closeIntForm();
+  renderIntervencoes();
+  toast('✅ Intervenção salva!');
+}
+
+async function renderIntervencoes(){
+  var ra=$('results-area');if(!ra)return;
+  ra.innerHTML='<div style="color:#3a5a8a;padding:20px;text-align:center">Carregando...</div>';
+  await fetchIntervencoes();
+
+  var PRIOR_COLOR={'alta':'#ef4444','media':'#eab308','baixa':'#34d399'};
+  var PRIOR_LABEL={'alta':'🔴 Alta','media':'🟡 Média','baixa':'🟢 Baixa'};
+  var today=new Date().toISOString().slice(0,10);
+
+  var pending=intervencoes.filter(function(x){return!x.feito;});
+  var done=intervencoes.filter(function(x){return x.feito;});
+
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
+    +'<div style="font-size:10px;color:#4a90d9;text-transform:uppercase;letter-spacing:2px;font-weight:600">⚡ Intervenções</div>'
+    +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<span style="font-size:12px;color:#3a5a8a">'+pending.length+' pendentes · '+done.length+' concluídas</span>'
+      +'<button class="btn btn-primary btn-sm" onclick="openIntForm()">+ Nova</button>'
+    +'</div>'
+    +'</div>';
+
+  function card(int){
+    var col=PRIOR_COLOR[int.prioridade]||'#eab308';
+    var isPast=int.prazo&&int.prazo<today&&!int.feito;
+    var prazoFmt=int.prazo?int.prazo.slice(8)+'/'+int.prazo.slice(5,7)+'/'+int.prazo.slice(0,4):'';
+    return '<div style="background:#071220;border:1px solid '+(int.feito?'#1e3a6e':col+'44')+';border-radius:10px;padding:14px 16px;margin-bottom:8px;opacity:'+(int.feito?'0.55':'1')+';display:flex;align-items:flex-start;gap:14px">'
+      // Checkbox
+      +'<div style="flex-shrink:0;padding-top:2px">'
+        +'<input type="checkbox" '+(int.feito?'checked':'')+' data-id="'+int.id+'" onchange="toggleIntervencao(this.dataset.id)" style="width:18px;height:18px;accent-color:#34d399;cursor:pointer">'
+      +'</div>'
+      // Left accent
+      +'<div style="width:3px;height:auto;background:'+col+';border-radius:2px;flex-shrink:0;min-height:40px"></div>'
+      // Content
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
+          +'<span style="font-size:14px;font-weight:700;color:#e8f0fe">'+int.jogador+'</span>'
+          +'<span style="font-size:10px;background:'+col+'22;color:'+col+';padding:2px 8px;border-radius:10px;border:1px solid '+col+'44">'+PRIOR_LABEL[int.prioridade]+'</span>'
+          +(int.feito?'<span style="font-size:10px;background:#16a34a22;color:#34d399;padding:2px 8px;border-radius:10px;border:1px solid #16a34a44">✅ Concluída'+( int.feitoEm?' em '+int.feitoEm.slice(8)+'/'+int.feitoEm.slice(5,7):'')+' </span>':'')
+          +(isPast?'<span style="font-size:10px;background:#dc262622;color:#f87171;padding:2px 8px;border-radius:10px;border:1px solid #dc262644">⚠️ Atrasada</span>':'')
+        +'</div>'
+        +'<div style="font-size:13px;color:#94a3b8;margin-bottom:6px;line-height:1.5">'+int.acao+'</div>'
+        +'<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#3a5a8a">'
+          +(int.responsavel?'<span>👤 '+int.responsavel+'</span>':'')
+          +(prazoFmt?'<span style="color:'+(isPast?'#f87171':'#3a5a8a')+'">📅 Prazo: '+prazoFmt+'</span>':'')
+          +'<span>🗓 '+int.data+'</span>'
+        +'</div>'
+      +'</div>'
+      // Actions
+      +'<div style="display:flex;gap:4px;flex-shrink:0">'
+        +'<button data-id="'+int.id+'" onclick="openIntForm(this.dataset.id)" style="background:transparent;border:none;color:#1e3a6e;cursor:pointer;font-size:14px;padding:4px 6px">✏️</button>'
+        +'<button data-id="'+int.id+'" onclick="deleteIntervencao(this.dataset.id)" style="background:transparent;border:none;color:#3a2020;cursor:pointer;font-size:14px;padding:4px 6px">🗑</button>'
+      +'</div>'
+    +'</div>';
+  }
+
+  if(!intervencoes.length){
+    html+='<div class="empty">⚡<br>Nenhuma intervenção registrada.<br><button class="btn btn-primary" style="margin-top:14px" onclick="openIntForm()">+ Adicionar primeira</button></div>';
+  } else {
+    if(pending.length){
+      html+='<div style="font-size:10px;color:#fbbf24;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:10px">Pendentes ('+pending.length+')</div>';
+      html+=pending.map(card).join('');
+    }
+    if(done.length){
+      html+='<div style="font-size:10px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin:16px 0 10px">Concluídas ('+done.length+')</div>';
+      html+=done.map(card).join('');
+    }
+  }
+
+  ra.innerHTML=html;
+}
 
 // ── IMPORTS HISTORY ──
 var importLogs=[];
@@ -3902,5 +4081,37 @@ async function renderAgenda(){
   </div>
 </div>
 <!-- ── / AGENDA MODAL ── -->
+
+<!-- ── INTERVENÇÃO MODAL ── -->
+<div class="overlay" id="int-form-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="mh"><h2 id="int-form-title">Nova Intervenção</h2><button class="xbtn" onclick="closeIntForm()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:14px">
+      <div><label class="fl">Jogador</label>
+        <input type="text" id="if-jogador" class="fi" list="if-jogador-list" placeholder="Digite o nome...">
+        <datalist id="if-jogador-list"></datalist>
+      </div>
+      <div><label class="fl">Ação / Descrição</label>
+        <textarea id="if-acao" class="fi" rows="3" placeholder="Ex: Aumentar volume, revisar preflop, intervir no mindset..."></textarea>
+      </div>
+      <div><label class="fl">Responsável</label>
+        <input type="text" id="if-responsavel" class="fi" list="if-resp-list" placeholder="Nome do coach responsável...">
+        <datalist id="if-resp-list"></datalist>
+      </div>
+      <div><label class="fl">Prazo <span style="color:#3a5a8a">(opcional)</span></label>
+        <input type="date" id="if-prazo" class="fi">
+      </div>
+      <div><label class="fl">Prioridade</label>
+        <select id="if-prioridade" class="fi">
+          <option value="alta">🔴 Alta</option>
+          <option value="media" selected>🟡 Média</option>
+          <option value="baixa">🟢 Baixa</option>
+        </select>
+      </div>
+    </div>
+    <div class="mf"><button class="btn btn-ghost" onclick="closeIntForm()">Cancelar</button><button class="btn btn-primary" onclick="saveIntervencao()">💾 Salvar</button></div>
+  </div>
+</div>
+<!-- ── / INTERVENÇÃO MODAL ── -->
 </body>
 </html>
