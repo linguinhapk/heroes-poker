@@ -3552,8 +3552,7 @@ async function fetchIntervencoes(){
   if(!fbUrl)return;
   try{
     var r=await fetch(fbIntervencoes()+'.json');
-    if(!r.ok)return;
-    var d=await r.json();
+    var d=r.ok?await r.json():null;
     intervencoes=d&&typeof d==='object'?Object.values(d).filter(Boolean):[];
     intervencoes.sort(function(a,b){
       var ap=a.feito?1:0,bp=b.feito?1:0;
