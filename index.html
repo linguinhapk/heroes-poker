@@ -3608,7 +3608,7 @@ async function saveIntervencao(){
   if(!jogador){toast('Informe o jogador.','err');return;}
   if(!acao){toast('Informe a ação.','err');return;}
   // Auto-get responsavel from player's mentor
-  var playerObj=players.find(function(p){return p.nome.toLowerCase()===jogador.toLowerCase();});
+  var playerObj=players.find(function(p){return(p.nome||'').toLowerCase()===jogador.toLowerCase();});
   var responsavel=playerObj&&playerObj.mentor?playerObj.mentor:'';
   var dataVal=document.getElementById('if-data').value||new Date().toISOString().slice(0,10);
   var item={
@@ -3646,8 +3646,13 @@ async function saveIntervencao(){
 async function renderIntervencoes(){
   var ra=$('results-area');if(!ra)return;
   ra.innerHTML='<div style="color:#3a5a8a;padding:20px;text-align:center">Carregando...</div>';
-  await fetchIntervencoes();
+  try{
+    await fetchIntervencoes();
+  }catch(e){
+    console.error('fetchIntervencoes falhou:',e);
+  }
 
+  try{
 
   var pending=intervencoes.filter(function(x){return!x.feito;});
   var done=intervencoes.filter(function(x){return x.feito;});
@@ -3674,7 +3679,6 @@ async function renderIntervencoes(){
       +'<div style="flex:1;min-width:0">'
         +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
           +'<span style="font-size:14px;font-weight:700;color:#e8f0fe">'+int.jogador+'</span>'
-          +'<span style="font-size:10px;background:'+col+'22;color:'+col+';padding:2px 8px;border-radius:10px;border:1px solid '+col+'44">'+PRIOR_LABEL[int.prioridade]+'</span>'
           +(int.feito?'<span style="font-size:10px;background:#16a34a22;color:#34d399;padding:2px 8px;border-radius:10px;border:1px solid #16a34a44">✅ Concluída'+( int.feitoEm?' em '+int.feitoEm.slice(8)+'/'+int.feitoEm.slice(5,7):'')+' </span>':'')
           
         +'</div>'
@@ -3707,6 +3711,15 @@ async function renderIntervencoes(){
   }
 
   ra.innerHTML=html;
+  }catch(err){
+    console.error('renderIntervencoes falhou:',err);
+    ra.innerHTML='<div style="color:#f87171;background:#1c0a0a;border:1px solid #7f1d1d;padding:16px;border-radius:10px;font-size:13px">'
+      +'<div style="font-weight:600;margin-bottom:6px">⚠️ Erro ao renderizar intervenções</div>'
+      +'<div style="font-size:11px;color:#fca5a5;margin-bottom:10px">'+(err&&err.message?err.message:String(err))+'</div>'
+      +'<button class="btn btn-primary btn-sm" onclick="openIntForm()">+ Nova intervenção</button> '
+      +'<button class="btn btn-ghost btn-sm" onclick="renderIntervencoes()">🔄 Tentar novamente</button>'
+    +'</div>';
+  }
 }
 
 // ── IMPORTS HISTORY ──
